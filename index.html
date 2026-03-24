@@ -1942,19 +1942,31 @@ function saveRound(){
 
 function drawLeader(){
   var em=document.getElementById('lb-empty'),bd=document.getElementById('lb-body');
-  if(!S.started){em.style.display='block';bd.style.display='none';return;}
+  var log = JSON.parse(localStorage.getItem('ct_admin')||'[]');
+  if(!log.length){em.style.display='block';bd.style.display='none';return;}
   em.style.display='none'; bd.style.display='block';
-  document.getElementById('lb-title').textContent=S.name.toUpperCase();
-  var max=S.stationBirds.reduce(function(a,b){return a+b;},0)||S.stations*S.birds,medals=['🥇','🥈','🥉'];
-  var sorted=S.shooters.map(function(s){var sc=getScore(s);return{name:s,h:sc.h,ms:sc.ms};}).sort(function(a,b){return b.h-a.h;});
-  document.getElementById('lb-rows').innerHTML=sorted.map(function(s,i){
-    var pct=max>0?Math.round(s.h/max*100):0;
+  document.getElementById('lb-title').textContent=S.name?S.name.toUpperCase():'LIVE LEADERBOARD';
+
+  // Build totals from admin log
+  var totals={};
+  log.forEach(function(r){
+    if(!totals[r.shooter]) totals[r.shooter]={h:0,ms:0};
+    totals[r.shooter].h+=r.dead;
+    totals[r.shooter].ms+=r.lost;
+  });
+
+  var maxP = S.started ? (S.stationBirds.reduce(function(a,b){return a+b;},0)||S.stations*S.birds) : 100;
+  var medals=['🥇','🥈','🥉'];
+  var sorted=Object.entries(totals).sort(function(a,b){return b[1].h-a[1].h;});
+
+  document.getElementById('lb-rows').innerHTML=sorted.map(function(e,i){
+    var nm=e[0],sc=e[1],pct=maxP>0?Math.round(sc.h/maxP*100):0;
     return '<div class="lb-row'+(i===0?' gold':'')+'">'
       +'<div class="lb-rank">'+(medals[i]||i+1)+'</div>'
-      +'<div style="flex:1"><div style="font-size:15px;font-weight:600">'+s.name+'</div>'
-      +'<div style="font-family:DM Mono,monospace;font-size:11px;margin-top:2px"><span style="color:var(--hit)">'+s.h+' Dead</span> &nbsp; <span style="color:var(--miss)">'+s.ms+' Lost</span></div>'
-      +'<div class="lb-bar"><div class="lb-fill" style="width:'+(max>0?Math.round(s.h/max*100):0)+'%"></div></div></div>'
-      +'<div style="text-align:right"><div style="font-family:Bebas Neue,sans-serif;font-size:30px;line-height:1">'+s.h+'</div>'
+      +'<div style="flex:1"><div style="font-size:15px;font-weight:600">'+nm+'</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:11px;margin-top:2px"><span style="color:var(--hit)">'+sc.h+' Dead</span> &nbsp; <span style="color:var(--miss)">'+sc.ms+' Lost</span></div>'
+      +'<div class="lb-bar"><div class="lb-fill" style="width:'+(maxP>0?Math.round(sc.h/maxP*100):0)+'%"></div></div></div>'
+      +'<div style="text-align:right"><div style="font-family:Bebas Neue,sans-serif;font-size:30px;line-height:1">'+sc.h+'</div>'
       +'<div style="font-size:11px;color:var(--dim);font-family:DM Mono,monospace">'+pct+'%</div></div></div>';
   }).join('');
 }
@@ -2348,10 +2360,17 @@ function exportAdmin(){
 function drawScorecardPage(){
   var em=document.getElementById('sc-card-empty');
   var bd=document.getElementById('sc-card-body');
-  if(!S.started){em.style.display='block';bd.style.display='none';return;}
+  var log = JSON.parse(localStorage.getItem('ct_admin')||'[]');
+  if(!log.length){em.style.display='block';bd.style.display='none';return;}
   em.style.display='none'; bd.style.display='block';
+
+  // Get unique shooters from admin log
+  var shooters = [];
+  log.forEach(function(r){ if(shooters.indexOf(r.shooter)===-1) shooters.push(r.shooter); });
+  shooters.sort();
+
   var sel=document.getElementById('sc-card-sel');
-  sel.innerHTML=S.shooters.map(function(s){
+  sel.innerHTML=shooters.map(function(s){
     return '<option value="'+s+'">'+s+'</option>';
   }).join('');
   drawScorecard();
