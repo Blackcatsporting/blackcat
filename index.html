@@ -911,24 +911,52 @@ function newEvent(){
     localStorage.setItem('ct_history',JSON.stringify(histLog));
   }
 
-  // Clear admin log for new event
+  // Clear admin log locally and on Firebase
   adminLog=[];
   localStorage.setItem('ct_admin','[]');
-  // Clear saved squads
+  if(db){
+    db.ref('ct_admin').set([]);
+    db.ref('ct_squads').set([]);
+    db.ref('ct_event_state').set(null);
+    db.ref('ct_active_session').set('');
+  }
+
+  // Clear saved squads and session
   localStorage.removeItem('ct_squads');
-  // Reset station dropdown so it rebuilds for new event
+  localStorage.setItem('ct_active_session','');
+
+  // Reset station dropdown
   trapStation = 0;
   var stSel = document.getElementById('tr-st');
   if (stSel) stSel.innerHTML = '';
-  var stBar = document.getElementById('tr-station-bar');
-  if (stBar) stBar.style.display = 'none';
-  // Force admin screen to redraw immediately so old scores disappear
+
+  // Force all tabs to redraw empty
   var adEmpty=document.getElementById('ad-empty');
   var adResults=document.getElementById('ad-results');
   var adTotals=document.getElementById('ad-totals');
   if(adEmpty)   adEmpty.style.display='block';
   if(adResults) adResults.innerHTML='';
   if(adTotals)  adTotals.style.display='none';
+  var adRot=document.getElementById('ad-rotation');
+  if(adRot) adRot.style.display='none';
+
+  // Clear leader tab
+  var lbEmpty=document.getElementById('lb-empty');
+  var lbBody=document.getElementById('lb-body');
+  if(lbEmpty) lbEmpty.style.display='block';
+  if(lbBody)  lbBody.style.display='none';
+
+  // Clear score tab
+  var scEmpty=document.getElementById('sc-empty');
+  var scBody=document.getElementById('sc-body');
+  if(scEmpty) scEmpty.style.display='block';
+  if(scBody)  scBody.style.display='none';
+
+  // Clear scorecard tab
+  var scCardEmpty=document.getElementById('sc-card-empty');
+  var scCardBody=document.getElementById('sc-card-body');
+  if(scCardEmpty) scCardEmpty.style.display='block';
+  if(scCardBody)  scCardBody.style.display='none';
 
   // Reset all state
   S.started=false; S.name=''; S.stations=10; S.birds=10;
@@ -947,9 +975,7 @@ function newEvent(){
 
   // Rebuild station list
   buildStationBirdsList();
-buildFitascSetup();
-
-
+  buildFitascSetup();
   drawChips();
 
   toast('Cleared — ready for new event!','green');
@@ -1874,18 +1900,29 @@ function getScore(name){
 
 function drawScore(){
   var em=document.getElementById('sc-empty'),bd=document.getElementById('sc-body');
-  if(!S.started){em.style.display='block';bd.style.display='none';return;}
+  var log = JSON.parse(localStorage.getItem('ct_admin')||'[]');
+  if(!log.length){em.style.display='block';bd.style.display='none';return;}
   em.style.display='none'; bd.style.display='block';
-  document.getElementById('sc-sel').innerHTML=S.shooters.map(function(s){
+
+  // Get all shooters from log
+  var allShooters = [];
+  log.forEach(function(r){ if(allShooters.indexOf(r.shooter)===-1) allShooters.push(r.shooter); });
+  allShooters.sort();
+  if(!S.active || allShooters.indexOf(S.active)===-1) S.active = allShooters[0];
+
+  document.getElementById('sc-sel').innerHTML=allShooters.map(function(s){
     var a=s===S.active;
     return '<div onclick="pickShooter(\''+esc(s)+'\')" style="padding:7px 14px;border-radius:20px;font-size:12px;font-family:DM Mono,monospace;cursor:pointer;white-space:nowrap;border:1px solid '+(a?'var(--gold)':'var(--bdr)')+';background:'+(a?'var(--gold)':'var(--surf2)')+';color:'+(a?'#0f0f07':'var(--dim)')+';font-weight:'+(a?'700':'400')+'">'+s+'</div>';
   }).join('');
+
   document.getElementById('sc-name').textContent=S.active;
-  var sc=getScore(S.active),max=S.stationBirds.reduce(function(a,b){return a+b;},0)||S.stations*S.birds;
-  document.getElementById('sc-dead').textContent=sc.h;
-  document.getElementById('sc-lost').textContent=sc.ms;
-  document.getElementById('sc-max').textContent=max;
-  drawStations();
+  var shooterLog = log.filter(function(r){ return r.shooter===S.active; });
+  var totalDead=0, totalLost=0, totalBirds=0;
+  shooterLog.forEach(function(r){ totalDead+=r.dead; totalLost+=r.lost; totalBirds+=r.total; });
+  document.getElementById('sc-dead').textContent=totalDead;
+  document.getElementById('sc-lost').textContent=totalLost;
+  document.getElementById('sc-max').textContent=totalBirds;
+  drawStationsFromLog(S.active, log);
 }
 
 function esc(s){return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
@@ -2379,61 +2416,59 @@ function drawScorecardPage(){
 function drawScorecard(){
   var sel=document.getElementById('sc-card-sel');
   var shooter=sel.value;
-  if(!shooter||!S.scores[shooter]) return;
+  if(!shooter) return;
 
-  var maxTotal=S.stationBirds.reduce(function(a,b){return a+b;},0)||S.stations*S.birds;
-  var sc=S.scores[shooter];
+  var log = JSON.parse(localStorage.getItem('ct_admin')||'[]');
+  var shooterLog = log.filter(function(r){ return r.shooter===shooter; });
+
+  var stationData = {};
+  shooterLog.forEach(function(r){ stationData[r.station]={dead:r.dead,lost:r.lost,total:r.total}; });
+
+  var numStations = S.started ? S.stations : (Object.keys(stationData).length ? Math.max.apply(null,Object.keys(stationData).map(Number))+1 : 10);
   var grandDead=0, grandTotal=0;
 
-  // Build scorecard table
-  var html='';
-  html+='<div style="background:var(--surf);border:2px solid #00aaff;border-radius:12px;overflow:hidden;margin-bottom:14px">';
-
-  // Header
+  var html='<div style="background:var(--surf);border:2px solid #00aaff;border-radius:12px;overflow:hidden;margin-bottom:14px">';
   html+='<div style="background:#0a0a2e;padding:16px;text-align:center;border-bottom:2px solid #00aaff">';
-  html+='<div style="font-family:Bebas Neue,sans-serif;font-size:13px;letter-spacing:3px;color:#00aaff;margin-bottom:4px">'+S.name+'</div>';
+  html+='<div style="font-family:Bebas Neue,sans-serif;font-size:13px;letter-spacing:3px;color:#00aaff;margin-bottom:4px">'+(S.name||'EVENT')+'</div>';
   html+='<div style="font-family:Bebas Neue,sans-serif;font-size:28px;letter-spacing:2px;color:#00ccff">'+shooter+'</div>';
   html+='<div style="font-size:11px;font-family:DM Mono,monospace;color:var(--dim);margin-top:4px">'+new Date().toLocaleDateString()+'</div>';
-  html+='</div>';
+  html+='</div><div>';
 
-  // Station rows
-  html+='<div>';
-  for(var i=0;i<S.stations;i++){
-    var birds=sc[i]||[];
-    var dead=birds.filter(function(b){return b===true;}).length;
-    var lost=birds.filter(function(b){return b===false;}).length;
-    var total=S.stationBirds[i]||S.birds;
+  for(var i=0;i<numStations;i++){
+    var st=stationData[i];
+    var dead=st?st.dead:0,lost=st?st.lost:0,total=st?st.total:(S.stationBirds[i]||S.birds||10);
     grandDead+=dead; grandTotal+=total;
-    var pct=total>0?Math.round(dead/total*100):0;
     var rowBg=i%2===0?'var(--surf)':'var(--surf2)';
     html+='<div style="display:flex;align-items:center;padding:10px 16px;background:'+rowBg+';border-bottom:1px solid var(--bdr)">';
-    html+='<div style="font-family:Bebas Neue,sans-serif;font-size:16px;color:var(--gold);width:90px;letter-spacing:1px">Station '+(i+1)+'</div>';
-    html+='<div style="flex:1;display:flex;gap:6px">';
-    // Bird results as X/O
-    birds.forEach(function(b){
-      if(b===true)  html+='<span style="font-family:Bebas Neue,sans-serif;font-size:16px;color:var(--hit)">X</span>';
-      else if(b===false) html+='<span style="font-family:Bebas Neue,sans-serif;font-size:16px;color:var(--miss)">O</span>';
-      else html+='<span style="font-family:Bebas Neue,sans-serif;font-size:16px;color:var(--bdr)">—</span>';
-    });
-    html+='</div>';
-    html+='<div style="font-family:Bebas Neue,sans-serif;font-size:18px;color:var(--txt);min-width:50px;text-align:right">'+dead+'/'+total+'</div>';
+    html+='<div style="font-family:Bebas Neue,sans-serif;font-size:16px;color:var(--gold);width:100px;letter-spacing:1px">'+stationLabel()+' '+(i+1)+'</div>';
+    if(st){
+      html+='<div style="flex:1;font-family:DM Mono,monospace;font-size:13px"><span style="color:var(--hit)">'+dead+' Dead</span> / <span style="color:var(--miss)">'+lost+' Lost</span></div>';
+      html+='<div style="font-family:Bebas Neue,sans-serif;font-size:18px;color:var(--txt);min-width:50px;text-align:right">'+dead+'/'+total+'</div>';
+    } else {
+      html+='<div style="flex:1;font-family:DM Mono,monospace;font-size:12px;color:var(--bdr)">not submitted</div>';
+    }
     html+='</div>';
   }
   html+='</div>';
 
-  // Total row
   var grandPct=grandTotal>0?Math.round(grandDead/grandTotal*100):0;
   html+='<div style="background:#0a0a2e;padding:16px;display:flex;justify-content:space-between;align-items:center;border-top:2px solid #00aaff">';
   html+='<div style="font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#00aaff">TOTAL</div>';
   html+='<div style="text-align:right">';
   html+='<div style="font-family:Bebas Neue,sans-serif;font-size:40px;color:#00ccff;line-height:1">'+grandDead+' / '+grandTotal+'</div>';
   html+='<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim)">'+grandPct+'% &nbsp; '+grandDead+' Dead &nbsp; '+(grandTotal-grandDead)+' Lost</div>';
-  html+='</div></div>';
+  html+='</div></div></div>';
+
+  // Scorechaser entry box
+  html+='<div style="background:var(--surf2);border:1px solid var(--gold);border-radius:8px;padding:14px;margin-top:10px">';
+  html+='<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--gold);letter-spacing:1px;margin-bottom:6px">SCORECHASER ENTRY</div>';
+  html+='<div style="font-family:Bebas Neue,sans-serif;font-size:22px;color:var(--txt)">'+shooter+'</div>';
+  html+='<div style="font-family:Bebas Neue,sans-serif;font-size:40px;color:var(--gold)">'+grandDead+' / '+grandTotal+'</div>';
   html+='</div>';
 
   document.getElementById('sc-card-content').innerHTML=html;
-
 }
+
 
 // ── FITASC ────────────────────────────────────────────────────────────────────
 // fitascSetup = [{pegs: [{birds:8},{birds:6},{birds:6},{birds:5}]}, ...] x4 parcours
