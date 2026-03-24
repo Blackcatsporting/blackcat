@@ -459,6 +459,7 @@ body{background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;min-
 <script>
 var trapperName = '';
 var trapperEventType = 'SC'; // event type selected by trapper at login
+var db = null; // Firebase database — initialized later
 var S = {started:false,name:'',stations:10,birds:10,stationBirds:[],shooters:[],squads:[],scores:{},active:'',eventType:'SC'};
 var activeSession = ''; // which session is currently shooting
 var adminLog = JSON.parse(localStorage.getItem('ct_admin')   || '[]');
@@ -500,7 +501,44 @@ function confirmTrapperName() {
   // Set event type based on trapper's selection
   S.eventType = trapperEventType;
   document.getElementById('startup-overlay').style.display = 'none';
-  setMode('trapper');
+
+  // Pull current event state from Firebase before showing trapper screen
+  if(db){
+    toast('Connecting...', 'green');
+    db.ref('ct_event_state').once('value').then(function(snap){
+      var state = snap.val();
+      if(state && state.started){
+        toast('Event found: '+state.name, 'green');
+        S.started      = state.started;
+        S.name         = state.name;
+        S.stations     = state.stations;
+        S.birds        = state.birds;
+        S.stationBirds = state.stationBirds;
+        S.shooters     = state.shooters;
+        if(!S.eventType) S.eventType = state.eventType || 'SC';
+      } else {
+        toast('No event found in Firebase', '');
+      }
+      // Also pull squads
+      db.ref('ct_squads').once('value').then(function(snap2){
+        var sq = snap2.val();
+        if(sq){
+          var arr = Array.isArray(sq) ? sq : Object.values(sq);
+          localStorage.setItem('ct_squads', JSON.stringify(arr));
+          if(!S.squads.length) S.squads = arr;
+        }
+        // Also pull active session
+        db.ref('ct_active_session').once('value').then(function(snap3){
+          var sess = snap3.val();
+          if(sess) localStorage.setItem('ct_active_session', sess);
+          setMode('trapper');
+        });
+      });
+    });
+  } else {
+    toast('No Firebase connection — check internet', '');
+    setMode('trapper');
+  }
 }
 
 function setMode(mode) {
@@ -950,6 +988,17 @@ function startRound(){
   }
   // Save squads to localStorage so trapper screen can access them
   localStorage.setItem('ct_squads', JSON.stringify(S.squads));
+  // Push full event state to Firebase so trappers get it automatically
+  fbPushEventState({
+    started:       S.started,
+    name:          S.name,
+    stations:      S.stations,
+    birds:         S.birds,
+    stationBirds:  S.stationBirds,
+    shooters:      S.shooters,
+    eventType:     S.eventType
+  });
+  fbPushSquads(S.squads);
   toast('Round started!','green'); go('squads');
 }
 
@@ -2709,7 +2758,7 @@ setInterval(function(){
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script>
-    var db = null;
+    var db = null; // already declared in main script
     try {
       const firebaseConfig = {
         apiKey: "AIzaSyBZkp2x4ZEqpBKgP-kIJ8LVQ6FptRBz-Y",
@@ -2738,6 +2787,17 @@ setInterval(function(){
       if(!db) return;
       db.ref('ct_squads').set(squads).catch(function(e){ console.warn('FB push failed',e); });
     }
+    function fbPushEventState(state){
+      if(!db) return;
+      db.ref('ct_event_state').set(state).catch(function(e){ console.warn('FB push failed',e); });
+    }
+    function fbListenEventState(callback){
+      if(!db) return;
+      db.ref('ct_event_state').on('value', function(snap){
+        var val = snap.val();
+        if(val) callback(val);
+      });
+    }
     function fbListenAdminLog(callback){
       if(!db) return;
       db.ref('ct_admin').on('value', function(snap){
@@ -2760,6 +2820,28 @@ setInterval(function(){
     }
 
     // Start listeners now that Firebase is ready
+
+    // Listen for event state from admin — trappers get setup automatically
+    fbListenEventState(function(state){
+      if(state && state.started && !S.started){
+        S.started      = state.started;
+        S.name         = state.name;
+        S.stations     = state.stations;
+        S.birds        = state.birds;
+        S.stationBirds = state.stationBirds;
+        S.shooters     = state.shooters;
+        S.eventType    = state.eventType || 'SC';
+        // Rebuild trapper station dropdown
+        var stSel = document.getElementById('tr-st');
+        if(stSel) stSel.innerHTML = '';
+        // If on trapper screen, refresh it
+        var pg = document.getElementById('pg-trapper');
+        if(pg && pg.classList.contains('on')){
+          drawTrapperPick();
+        }
+      }
+    });
+
     fbListenAdminLog(function(log){
       var arr = Array.isArray(log) ? log : Object.values(log);
       adminLog = arr;
