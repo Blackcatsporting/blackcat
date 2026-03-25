@@ -202,6 +202,13 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
       <button class="btn btn-grey" onclick="addShooter()">Add</button>
     </div>
   </div>
+  <!-- MANUAL SQUAD BUILDER -->
+  <div class="card">
+    <div class="ctitle">👥 Manual Squads</div>
+    <div class="info">Build squads manually — enter a squad number and add shooters one by one. Use this instead of Scorechaser import for small events.</div>
+    <div id="manual-squad-list"></div>
+    <button class="btn btn-grey btn-full mt8" onclick="addManualSquad()" style="font-size:13px;padding:12px">➕ Add Squad</button>
+  </div>
   <button class="btn btn-gold btn-full" onclick="startRound()" style="font-size:15px;padding:15px">🎯 Start Round</button>
   <button class="btn btn-grey btn-full" onclick="newEvent()" style="font-size:13px;padding:12px;margin-top:10px">🗑 Clear & Start New Event</button>
 </div>
@@ -876,6 +883,114 @@ function loadRosterToEvent(){
   go('setup');
 }
 
+// ── MANUAL SQUAD BUILDER ─────────────────────────────────────────────────────
+var manualSquads = []; // [{label:'1', members:['Name1','Name2',...]}]
+
+function addManualSquad(){
+  var num = manualSquads.length + 1;
+  manualSquads.push({ label: String(num), members: [] });
+  renderManualSquads();
+}
+
+function removeManualSquad(idx){
+  manualSquads.splice(idx, 1);
+  // Renumber
+  manualSquads.forEach(function(sq, i){ sq.label = String(i+1); });
+  renderManualSquads();
+}
+
+function addManualMember(idx){
+  var inp = document.getElementById('manual-inp-'+idx);
+  if(!inp) return;
+  var name = inp.value.trim();
+  if(!name){ toast('Enter a name'); return; }
+  manualSquads[idx].members.push(name);
+  inp.value = '';
+  renderManualSquads();
+  // Focus back on input
+  setTimeout(function(){
+    var i = document.getElementById('manual-inp-'+idx);
+    if(i) i.focus();
+  }, 50);
+}
+
+function removeManualMember(sqIdx, mIdx){
+  manualSquads[sqIdx].members.splice(mIdx, 1);
+  renderManualSquads();
+}
+
+function renderManualSquads(){
+  var el = document.getElementById('manual-squad-list');
+  if(!el) return;
+  if(!manualSquads.length){
+    el.innerHTML = '<div style="text-align:center;padding:10px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim)">No squads yet — tap Add Squad below</div>';
+    return;
+  }
+  el.innerHTML = '';
+  manualSquads.forEach(function(sq, idx){
+    var div = document.createElement('div');
+    div.style.cssText = 'background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:12px;margin-bottom:10px';
+
+    // Squad header
+    var hdr = document.createElement('div');
+    hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
+    hdr.innerHTML = '<div style="font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--gold);letter-spacing:2px">SQUAD '+sq.label+'</div>'
+      +'<button onclick="removeManualSquad('+idx+')" style="background:none;border:1px solid var(--miss);border-radius:6px;color:var(--miss);padding:4px 10px;font-size:12px;cursor:pointer">✕ Remove</button>';
+    div.appendChild(hdr);
+
+    // Members list
+    sq.members.forEach(function(m, mi){
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr)';
+      row.innerHTML = '<div style="font-size:16px;font-weight:600">'+m+'</div>'
+        +'<button onclick="removeManualMember('+idx+','+mi+')" style="background:none;border:none;color:var(--miss);font-size:18px;cursor:pointer">×</button>';
+      div.appendChild(row);
+    });
+
+    // Add member input
+    var addRow = document.createElement('div');
+    addRow.style.cssText = 'display:flex;gap:8px;margin-top:8px';
+    var inp = document.createElement('input');
+    inp.type = 'text';
+    inp.id = 'manual-inp-'+idx;
+    inp.className = 'inp';
+    inp.placeholder = 'Add shooter name…';
+    inp.style.cssText = 'margin-bottom:0;flex:1;font-size:15px';
+    inp.addEventListener('keydown', function(e){
+      if(e.key==='Enter') addManualMember(idx);
+    });
+    var addBtn = document.createElement('button');
+    addBtn.className = 'btn btn-grey';
+    addBtn.textContent = 'Add';
+    addBtn.onclick = function(){ addManualMember(idx); };
+    addRow.appendChild(inp);
+    addRow.appendChild(addBtn);
+    div.appendChild(addRow);
+    el.appendChild(div);
+  });
+}
+
+function applyManualSquads(){
+  if(!manualSquads.length) return;
+  // Merge into S.squads and S.shooters
+  manualSquads.forEach(function(msq){
+    // Check if squad label already exists
+    var existing = S.squads.find(function(sq){ return sq.label === msq.label; });
+    if(existing){
+      // Merge members
+      msq.members.forEach(function(m){
+        if(existing.members.indexOf(m)===-1) existing.members.push(m);
+      });
+    } else {
+      S.squads.push({ label:msq.label, num:parseInt(msq.label)||1, session:'', members:msq.members.slice() });
+    }
+    msq.members.forEach(function(m){
+      if(S.shooters.indexOf(m)===-1) S.shooters.push(m);
+    });
+  });
+}
+// ── END MANUAL SQUAD BUILDER ──────────────────────────────────────────────────
+
 function buildStationBirdsList(){
   var n=parseInt(document.getElementById('ev-st').value)||10;
   var def=parseInt(document.getElementById('ev-birds').value)||10;
@@ -1014,6 +1129,8 @@ function newEvent(){
   S.started=false; S.name=''; S.stations=10; S.birds=10;
   S.stationBirds=[]; S.shooters=[]; S.squads=[]; S.scores={}; S.active=''; S.eventType='SC';
   fiveStandRound = 1;
+  manualSquads = [];
+  renderManualSquads();
   var stInp=document.getElementById('ev-st'); var bInp=document.getElementById('ev-birds');
   if(stInp) stInp.value='10'; if(bInp) bInp.value='10';
   setEventType('SC');
@@ -1059,7 +1176,10 @@ function startRound(){
     S.scores[s]={};
     for(var i=0;i<S.stations;i++) S.scores[s][i]=new Array(S.stationBirds[i]).fill(null);
   });
-  // If squads were already set by Scorechaser import, keep them
+  // Apply any manually built squads
+  applyManualSquads();
+
+  // If squads were already set by Scorechaser import or manual, keep them
   // Otherwise put all shooters in one Squad 1
   if(!S.squads || S.squads.length===0){
     S.squads=[{num:1, label:'1', members:S.shooters.slice()}];
@@ -2959,6 +3079,7 @@ document.getElementById('sh-inp').addEventListener('keydown',function(e){if(e.ke
 document.getElementById('roster-inp').addEventListener('keydown',function(e){if(e.key==='Enter')addRosterMember();});
 drawChips();
 buildStationBirdsList();
+renderManualSquads();
 
 // Watch for session changes — refresh trapper list every 5 seconds
 var lastActiveSession = localStorage.getItem('ct_active_session')||'';
