@@ -717,61 +717,59 @@ function parseSquads(raw) {
     if (!line) return;
     if (line === 'No Entrants') return;
 
+    // FITASC format: time schedule with slash separators
     if (/\d+:\d+\s*(AM|PM)/i.test(line) && line.indexOf('/') > -1) {
       sessionLabel = line.split('/')[0].replace(/\s*[\u2014\-]\s*PAR.*$/i,'').trim();
       return;
     }
+    // Sporting Clays time header
     if (/\d+:\d+\s*(AM|PM)/i.test(line)){
       sessionLabel = line.replace(/\s*[\u2014\-]\s*/g,' - ').trim();
       return;
     }
 
-    var m = line.match(/^(\d+[AB]?)\s+(.*)/);
-    if (!m) m = line.match(/^(\d+[AB]?)((?:[A-Z][a-z]|[A-Z]{2,}).*)/);
-    if (!m) m = line.match(/^(\d+[AB]?)([A-Z].*)/);
+    var m = line.match(/^(\d+[A-Z]?)\s*(.*)/);
     if (!m) return;
     var label = m[1];
     var rest  = m[2];
     if(!rest || rest.trim().length === 0) return;
 
+    // 1. Remove commas
     rest = rest.replace(/,/g,'');
 
-    // Protect Jr/Sr/II/III/IV suffixes
+    // 2. Protect Jr/Sr/II/III/IV suffixes
     rest = rest.replace(/\b(Jr|Sr)\.\s*([A-Z])/gi, '$1.\n$2');
     rest = rest.replace(/\s+(Jr\.?|Sr\.?)\s+([A-Z])/gi, ' $1\n$2');
     rest = rest.replace(/\s+(Jr\.?|Sr\.?)$/gi, ' $1');
     rest = rest.replace(/\s+(II|III|IV)\s+([A-Z])/g, ' $1\n$2');
     rest = rest.replace(/\s+(II|III|IV)$/g, ' $1');
 
-    // Protect Mc/Mac/De/Du/Di/Le/La prefixes using \u00B6
+    // 3. Protect Mc/Mac/De/Du/Di/Le/La prefixes
     rest = rest.replace(/\b(Mc|Mac|De|Du|Di|Le|La)([A-Z][a-z])/g, '$1\u00B6$2');
 
-    // Protect hyphenated compound names using \u00A7
-    rest = rest.replace(/([A-Za-z])-([a-zA-Z])/g, function(m,a,b){
-      return a + '\u00A7' + b.toUpperCase();
-    });
+    // 4. Protect hyphenated names — capitalize second part
+    rest = rest.replace(/([A-Za-z])-([a-z])/g, function(m,a,b){ return a + 'HYPH' + b.toUpperCase(); });
+    rest = rest.replace(/([A-Za-z])-([A-Z])/g, '$1HYPH$2');
 
-    // Protect apostrophe names
+    // 5. Protect apostrophe names
     rest = rest.replace(/([A-Za-z])'([A-Za-z])/g, '$1APOS$2');
 
-    // Protect middle initials "Mike G Wilson"
+    // 6. Protect middle initials "Mike G Wilson"
     rest = rest.replace(/([A-Z][a-z]+)\s+([A-Z])\s+([A-Z][a-z])/g, '$1 $2~ $3');
 
-    // Protect double initials "H W Constantin"
+    // 7. Protect double initials "H W Constantin"
     rest = rest.replace(/\b([A-Z])\s+([A-Z])\s+([A-Z][a-z])/g, '$1~$2 $3');
 
-    // Main split: lowercase->uppercase (safe from protected chars)
-    rest = rest.replace(/([a-z\u00B6\u00A7])([A-Z])/g, function(m, before, cap) {
-      if(before === '\u00B6' || before === '\u00A7') return before + cap;
+    // 8. Main split: lowercase->uppercase (prefix-safe)
+    rest = rest.replace(/([a-z\u00B6])([A-Z])/g, function(m, before, cap) {
+      if(before === '\u00B6') return before + cap;
       return before + '\n' + cap;
     });
 
-    // Restore all protections
+    // 9. Restore all protections
     rest = rest.replace(/\u00B6/g, '');
-    rest = rest.replace(/\u00A7/g, '-');
-    rest = rest.replace(/APOS/g, "'");
-    rest = rest.replace(/~/g, ' ');
-    rest = rest.replace(/  +/g, ' ');
+    rest = rest.replace(/HYPH/g,'-').replace(/APOS/g,"'").replace(/~/g,' ');
+    rest = rest.replace(/  +/g,' ');
 
     var tokens = rest.split('\n').map(function(t){
       t = t.trim();
@@ -783,8 +781,16 @@ function parseSquads(raw) {
     while(i < tokens.length){
       var t = tokens[i];
       var words = t.split(/\s+/).filter(function(w){ return w; });
-      if(words.length >= 2){ names.push(t); i++; }
-      else {
+      if(words.length >= 2){
+        if(words.length===3 && /^[A-Z][a-z]+$/.test(words[1]) && /^[A-Z][a-z]+$/.test(words[2])){
+          var next = tokens[i+1];
+          if(next && next.split(/\s+/).length===1){
+            names.push(words[0]+' '+words[1]);
+            names.push(words[2]+' '+next);
+            i+=2;
+          } else { names.push(t); i++; }
+        } else { names.push(t); i++; }
+      } else {
         var w = words[0];
         if(/^(Jr\.?|Sr\.?|II|III|IV)$/i.test(w) && names.length > 0){
           names[names.length-1] += ' ' + w; i++;
