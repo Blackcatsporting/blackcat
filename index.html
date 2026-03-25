@@ -261,10 +261,17 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 
   <!-- SCREEN B: Station + Squad selection -->
   <div id="tr-screen-squads" style="display:none">
-    <!-- Station bar - fixed at top -->
-    <div style="background:var(--surf);border:2px solid var(--org);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
+    <!-- Station bar -->
+    <div style="background:var(--surf);border:2px solid var(--org);border-radius:10px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px">
       <div id="tr-station-label" style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--org);letter-spacing:2px;white-space:nowrap">MY STATION</div>
-      <select id="tr-st" class="inp" style="margin-bottom:0;flex:1" onchange="trapStation=parseInt(this.value)"></select>
+      <select id="tr-st" class="inp" style="margin-bottom:0;flex:1" onchange="trapStation=parseInt(this.value);scoredSquadKeys={};buildSquadList()"></select>
+    </div>
+    <!-- Session filter -->
+    <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:10px 16px;margin-bottom:10px">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Filter by Session</div>
+      <select id="tr-session-filter" class="inp" style="margin-bottom:0" onchange="trapSessionFilter=this.value;scoredSquadKeys={};buildSquadList()">
+        <option value="">Show All Squads</option>
+      </select>
     </div>
     <div id="tr-arrival-note" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--org);letter-spacing:1px;text-transform:uppercase;text-align:center;margin-bottom:12px"></div>
     <div id="tr-squad-list"></div>
@@ -1398,6 +1405,7 @@ function trapShowNameInput_squad(sqRef, idx){
 
 // ── TRAPPER ───────────────────────────────────────────────────────────────────
 var trapStation    = 0;
+var trapSessionFilter = ''; // trapper's own session filter
 var stylusMode = false; // when true, requires stylus (fine pointer) for DEAD/LOST
 var trapShooter    = '';
 var trapBirds      = [];
@@ -1511,21 +1519,45 @@ function buildSquadList() {
   var stationNum = trapStation + 1;
   var activeSess = localStorage.getItem('ct_active_session')||'';
 
+  // Populate session filter dropdown
+  var sessSel = document.getElementById('tr-session-filter');
+  if(sessSel){
+    var allSessions = [];
+    squads.forEach(function(sq){
+      var s = sq.session||'';
+      if(s && allSessions.indexOf(s)===-1) allSessions.push(s);
+    });
+    // Only rebuild options if sessions changed
+    if(sessSel.options.length !== allSessions.length + 1){
+      sessSel.innerHTML = '<option value="">Show All Squads</option>';
+      allSessions.forEach(function(s){
+        var o = document.createElement('option');
+        o.value = s; o.textContent = s;
+        if(s === trapSessionFilter) o.selected = true;
+        sessSel.appendChild(o);
+      });
+    }
+  }
+
   // Show active session in arrival note
   var note = document.getElementById('tr-arrival-note');
   if(note){
     var roundTag = S.eventType==='5STAND' ? ' — ROUND '+fiveStandRound : '';
-    note.textContent = activeSess ? '🕐 ' + activeSess + roundTag : stationLabel() + ' ' + stationNum + roundTag;
+    var displaySess = trapSessionFilter || activeSess;
+    note.textContent = displaySess ? '🕐 ' + displaySess + roundTag : stationLabel() + ' ' + stationNum + roundTag;
   }
 
-  // Filter by active session — but not for 5-Stand (no session concept)
+  // Filter squads — use trapper's own filter first, then admin active session
+  // Always show all squads if no filter set
   var filtered;
   if(S.eventType === '5STAND') {
-    filtered = squads; // show all squads for 5-Stand
+    filtered = squads;
+  } else if(trapSessionFilter) {
+    filtered = squads.filter(function(sq){ return (sq.session||'') === trapSessionFilter; });
+  } else if(activeSess) {
+    filtered = squads.filter(function(sq){ return (sq.session||'Main Event') === activeSess; });
   } else {
-    filtered = activeSess
-      ? squads.filter(function(sq){ return (sq.session||'Main Event') === activeSess; })
-      : squads;
+    filtered = squads; // show ALL squads if no session set
   }
 
   // Check if all squads are scored at this station
