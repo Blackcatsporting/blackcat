@@ -2067,7 +2067,7 @@ function drawLeader(){
   em.style.display='none'; bd.style.display='block';
   document.getElementById('lb-title').textContent=S.name?S.name.toUpperCase():'LIVE LEADERBOARD';
 
-  // Build totals from admin log
+  // Build individual totals from admin log
   var totals={};
   log.forEach(function(r){
     if(!totals[r.shooter]) totals[r.shooter]={h:0,ms:0};
@@ -2079,7 +2079,9 @@ function drawLeader(){
   var medals=['🥇','🥈','🥉'];
   var sorted=Object.entries(totals).sort(function(a,b){return b[1].h-a[1].h;});
 
-  document.getElementById('lb-rows').innerHTML=sorted.map(function(e,i){
+  // Individual leaderboard
+  var html = '<div style="font-family:Bebas Neue,sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px">🏆 Individual</div>';
+  html += sorted.map(function(e,i){
     var nm=e[0],sc=e[1],pct=maxP>0?Math.round(sc.h/maxP*100):0;
     return '<div class="lb-row'+(i===0?' gold':'')+'">'
       +'<div class="lb-rank">'+(medals[i]||i+1)+'</div>'
@@ -2089,6 +2091,58 @@ function drawLeader(){
       +'<div style="text-align:right"><div style="font-family:Bebas Neue,sans-serif;font-size:30px;line-height:1">'+sc.h+'</div>'
       +'<div style="font-size:11px;color:var(--dim);font-family:DM Mono,monospace">'+pct+'%</div></div></div>';
   }).join('');
+
+  // Squad leaderboard
+  var squads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
+  if(squads.length){
+    var squadTotals = [];
+    squads.forEach(function(sq){
+      var squadDead=0, squadLost=0, memberCount=0;
+      sq.members.forEach(function(m){
+        if(totals[m]){
+          squadDead += totals[m].h;
+          squadLost += totals[m].ms;
+          memberCount++;
+        }
+      });
+      if(memberCount > 0){
+        squadTotals.push({
+          label: sq.label||sq.num,
+          session: sq.session||'',
+          members: sq.members,
+          dead: squadDead,
+          lost: squadLost,
+          count: memberCount
+        });
+      }
+    });
+
+    if(squadTotals.length){
+      squadTotals.sort(function(a,b){ return b.dead - a.dead; });
+      var squadMaxP = maxP * (squadTotals[0] ? squadTotals[0].members.length : 1);
+
+      html += '<div style="margin-top:20px;padding-top:16px;border-top:2px solid var(--bdr)">';
+      html += '<div style="font-family:Bebas Neue,sans-serif;font-size:16px;letter-spacing:2px;color:var(--org);margin-bottom:10px">🏆 Squad Team Score</div>';
+      html += squadTotals.map(function(sq,i){
+        var avgPct = sq.members.length>0 ? Math.round(sq.dead/(maxP*sq.members.length)*100) : 0;
+        return '<div class="lb-row'+(i===0?' gold':'')+'" style="'+(i===0?'border-color:var(--org);background:#1a1000':'')+'">'
+          +'<div class="lb-rank" style="'+(i===0?'color:var(--org)':'')+'">'+(medals[i]||i+1)+'</div>'
+          +'<div style="flex:1">'
+          +'<div style="font-family:Bebas Neue,sans-serif;font-size:18px;color:var(--org);letter-spacing:1px">SQUAD '+sq.label+'</div>'
+          +'<div style="font-size:12px;color:var(--dim);margin-bottom:2px">'+sq.members.join(' · ')+'</div>'
+          +'<div style="font-family:DM Mono,monospace;font-size:11px"><span style="color:var(--hit)">'+sq.dead+' Dead</span> &nbsp; <span style="color:var(--miss)">'+sq.lost+' Lost</span></div>'
+          +'<div class="lb-bar"><div class="lb-fill" style="width:'+avgPct+'%;background:var(--org)"></div></div>'
+          +'</div>'
+          +'<div style="text-align:right">'
+          +'<div style="font-family:Bebas Neue,sans-serif;font-size:30px;line-height:1;color:var(--org)">'+sq.dead+'</div>'
+          +'<div style="font-size:11px;color:var(--dim);font-family:DM Mono,monospace">'+avgPct+'% avg</div>'
+          +'</div></div>';
+      }).join('');
+      html += '</div>';
+    }
+  }
+
+  document.getElementById('lb-rows').innerHTML = html;
 }
 
 function drawRotationBoard(){
