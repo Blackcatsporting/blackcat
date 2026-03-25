@@ -832,7 +832,9 @@ function previewPaste(){
 
 function importPaste(){
   var raw = document.getElementById('paste-box').value;
+  if(!raw.trim()){ toast('Nothing pasted!'); return; }
   var parsedSquads = parseSquads(raw);
+  alert('DEBUG: raw length='+raw.length+' lines='+raw.split('\n').length+' squads found='+parsedSquads.length+(parsedSquads.length>0?' first squad='+parsedSquads[0].label+' members='+parsedSquads[0].members.length:''));
   var added = 0;
   S.squads = parsedSquads;
   localStorage.setItem('ct_squads', JSON.stringify(parsedSquads));
