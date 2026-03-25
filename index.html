@@ -138,6 +138,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
   <div class="tab"     onclick="go('squads')">Squads</div>
   <div class="tab"     onclick="go('score')">Score</div>
   <div class="tab"     onclick="go('leader')">Leader</div>
+  <div class="tab"     onclick="go('assign')">Assign</div>
   <div class="tab"     onclick="go('admin')">Admin</div>
   <div class="tab"     onclick="go('scorecard')">Scorecard</div>
   <div class="tab"     onclick="go('history')">History</div>
@@ -363,6 +364,18 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
   </div>
 </div>
 
+<!-- ASSIGN -->
+<div id="pg-assign" class="pg">
+  <div class="card">
+    <div class="ctitle" style="color:var(--org)">📡 Trapper Assignment</div>
+    <div class="info">Trappers check in when they open the app. Assign each trapper a squad and starting station. Their device updates instantly.</div>
+    <button class="btn btn-grey btn-full mt8" onclick="drawAssign()" style="font-size:12px;padding:10px">🔄 Refresh</button>
+  </div>
+  <div id="assign-body">
+    <div class="empty"><div class="empty-icon">📡</div><div class="empty-txt">Waiting for trappers to check in</div></div>
+  </div>
+</div>
+
 <!-- ADMIN -->
 <div id="pg-admin" class="pg">
   <div class="card">
@@ -561,6 +574,16 @@ function confirmTrapperName() {
   S.eventType = trapperEventType;
   document.getElementById('startup-overlay').style.display = 'none';
 
+  // Register trapper in Firebase so admin can see and assign them
+  if(db){
+    db.ref('ct_trappers/'+name.replace(/[.#$[\]]/g,'_')).set({
+      name: name,
+      checkedIn: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
+      assignedSquad: null,
+      assignedStation: null
+    });
+  }
+
   // Pull current event state from Firebase before showing trapper screen
   if(db){
     toast('Connecting...', 'green');
@@ -590,7 +613,38 @@ function confirmTrapperName() {
         db.ref('ct_active_session').once('value').then(function(snap3){
           var sess = snap3.val();
           if(sess) localStorage.setItem('ct_active_session', sess);
-          setMode('trapper');
+          // Pull trapper assignment
+          var trapKey = trapperName.replace(/[.#$[\]]/g,'_');
+          db.ref('ct_trappers/'+trapKey).once('value').then(function(snap4){
+            var assignment = snap4.val();
+            if(assignment && assignment.assignedStation !== null){
+              trapStation = parseInt(assignment.assignedStation)||0;
+              var stSel = document.getElementById('tr-st');
+              if(stSel) stSel.value = String(trapStation);
+            }
+            if(assignment && assignment.assignedSquad !== null){
+              trapAssignedSquad = assignment.assignedSquad; // squad label
+            }
+            // Listen for assignment changes in real time
+            db.ref('ct_trappers/'+trapKey).on('value', function(snap){
+              var a = snap.val();
+              if(!a) return;
+              if(a.assignedStation !== null && a.assignedStation !== undefined){
+                trapStation = parseInt(a.assignedStation)||0;
+                var stSel = document.getElementById('tr-st');
+                if(stSel) stSel.value = String(trapStation);
+              }
+              if(a.assignedSquad !== null && a.assignedSquad !== undefined){
+                trapAssignedSquad = a.assignedSquad;
+              }
+              // Refresh squad list if on trapper screen
+              var trapScreen = document.getElementById('tr-screen-squads');
+              if(trapScreen && trapScreen.style.display !== 'none'){
+                buildSquadList();
+              }
+            });
+            setMode('trapper');
+          });
         });
       });
     });
@@ -648,6 +702,7 @@ function go(name) {
   if(name==='trapper')   drawTrapperPick();
   if(name==='score')     drawScore();
   if(name==='leader')    drawLeader();
+  if(name==='assign')    drawAssign();
   if(name==='admin')     drawAdmin();
   if(name==='scorecard') drawScorecardPage();
   if(name==='history')   drawHistory();
@@ -1085,6 +1140,7 @@ function newEvent(){
     db.ref('ct_admin').set([]);
     db.ref('ct_squads').set([]);
     db.ref('ct_event_state').set(null);
+    db.ref('ct_trappers').set(null);
     db.ref('ct_active_session').set('');
   }
 
@@ -1525,7 +1581,8 @@ function trapShowNameInput_squad(sqRef, idx){
 
 // ── TRAPPER ───────────────────────────────────────────────────────────────────
 var trapStation    = 0;
-var trapSessionFilter = ''; // trapper's own session filter
+var trapSessionFilter = '';
+var trapAssignedSquad = null; // squad label assigned by admin
 var stylusMode = false; // when true, requires stylus (fine pointer) for DEAD/LOST
 var trapShooter    = '';
 var trapBirds      = [];
@@ -1667,17 +1724,19 @@ function buildSquadList() {
     note.textContent = displaySess ? '🕐 ' + displaySess + roundTag : stationLabel() + ' ' + stationNum + roundTag;
   }
 
-  // Filter squads — use trapper's own filter first, then admin active session
-  // Always show all squads if no filter set
+  // Filter squads
   var filtered;
-  if(S.eventType === '5STAND') {
+  if(trapAssignedSquad !== null) {
+    // Admin has assigned a specific squad — show only that one
+    filtered = squads.filter(function(sq){ return (sq.label||sq.num) == trapAssignedSquad; });
+  } else if(S.eventType === '5STAND') {
     filtered = squads;
   } else if(trapSessionFilter) {
     filtered = squads.filter(function(sq){ return (sq.session||'') === trapSessionFilter; });
   } else if(activeSess) {
     filtered = squads.filter(function(sq){ return (sq.session||'Main Event') === activeSess; });
   } else {
-    filtered = squads; // show ALL squads if no session set
+    filtered = squads;
   }
 
   // Check if all squads are scored at this station
@@ -2528,6 +2587,77 @@ function setActiveSession(sess){
     scoredSquadKeys = {};
     buildSquadList();
   }
+}
+
+function drawAssign(){
+  if(!db){ document.getElementById('assign-body').innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-txt">Firebase not connected</div></div>'; return; }
+
+  db.ref('ct_trappers').once('value').then(function(snap){
+    var trappers = snap.val();
+    var el = document.getElementById('assign-body');
+    if(!trappers || !Object.keys(trappers).length){
+      el.innerHTML='<div class="empty"><div class="empty-icon">📡</div><div class="empty-txt">No trappers checked in yet</div></div>';
+      return;
+    }
+
+    var squads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
+    if(!squads.length) squads = S.squads;
+
+    var html = '';
+    Object.values(trappers).forEach(function(trapper){
+      var tKey = trapper.name.replace(/[.#$[\]]/g,'_');
+      html += '<div class="card" style="border-color:var(--org)">';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
+      html += '<div><div style="font-size:18px;font-weight:700;color:var(--org)">'+trapper.name+'</div>';
+      html += '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim)">Checked in: '+trapper.checkedIn+'</div></div>';
+      html += '<div style="font-family:Bebas Neue,sans-serif;font-size:13px;color:'+(trapper.assignedSquad?'var(--hit)':'var(--dim)')+'">'+
+        (trapper.assignedSquad ? '✓ Squad '+trapper.assignedSquad+' / Sta '+(parseInt(trapper.assignedStation)+1) : 'UNASSIGNED')+'</div>';
+      html += '</div>';
+
+      // Squad selector
+      html += '<label class="lbl">Assign Squad</label>';
+      html += '<select id="assign-sq-'+tKey+'" class="inp" style="margin-bottom:10px">';
+      html += '<option value="">— Select Squad —</option>';
+      squads.forEach(function(sq){
+        var sel = trapper.assignedSquad == (sq.label||sq.num) ? ' selected' : '';
+        html += '<option value="'+(sq.label||sq.num)+'"'+sel+'>Squad '+(sq.label||sq.num)+(sq.session?' ('+sq.session+')':'')+' — '+sq.members.join(', ')+'</option>';
+      });
+      html += '</select>';
+
+      // Station selector
+      html += '<label class="lbl">Starting Station</label>';
+      html += '<select id="assign-st-'+tKey+'" class="inp" style="margin-bottom:12px">';
+      for(var i=0;i<(S.started?S.stations:17);i++){
+        var sel2 = trapper.assignedStation == i ? ' selected' : '';
+        html += '<option value="'+i+'"'+sel2+'>'+stationLabel()+' '+(i+1)+'</option>';
+      }
+      html += '</select>';
+
+      html += '<button onclick="saveAssignment(this)" data-key="'+tKey+'" data-name="'+trapper.name+'" class="btn btn-org btn-full" style="font-size:14px;padding:12px">📡 Send to Trapper</button>';
+      html += '</div>';
+    });
+
+    el.innerHTML = html;
+  });
+}
+
+function saveAssignment(btn){
+  var tKey = btn.getAttribute('data-key');
+  var trapperName = btn.getAttribute('data-name');
+  var sqSel = document.getElementById('assign-sq-'+tKey);
+  var stSel = document.getElementById('assign-st-'+tKey);
+  if(!sqSel || !stSel) return;
+  var squad = sqSel.value;
+  var station = parseInt(stSel.value);
+  if(!squad){ toast('Select a squad first'); return; }
+
+  db.ref('ct_trappers/'+tKey).update({
+    assignedSquad: squad,
+    assignedStation: station
+  }).then(function(){
+    toast(trapperName+' assigned Squad '+squad+' / Station '+(station+1), 'green');
+    drawAssign(); // refresh
+  });
 }
 
 function drawAdmin(){
