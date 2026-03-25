@@ -280,6 +280,13 @@ body{background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;min-
       <div id="tr-name" style="font-family:'Bebas Neue',sans-serif;font-size:56px;letter-spacing:3px;color:#00ccff;line-height:1;margin-bottom:4px;word-break:break-word;text-shadow:0 0 20px rgba(0,204,255,0.4)"></div>
     </div>
     <!-- DEAD / LOST -->
+    <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:8px;gap:8px">
+      <div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px" id="stylus-label">TOUCH MODE</div>
+      <div id="stylus-toggle" onclick="toggleStylusMode()" style="width:44px;height:24px;border-radius:12px;background:var(--bdr);cursor:pointer;position:relative;transition:background 0.2s">
+        <div id="stylus-knob" style="position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:9px;background:#fff;transition:left 0.2s"></div>
+      </div>
+      <div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px">✏️ STYLUS</div>
+    </div>
     <div style="display:flex;gap:14px;margin-bottom:16px">
       <button id="tr-dead-btn" type="button" style="flex:1;padding:36px 10px;background:var(--hit);color:#fff;border:none;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:48px;letter-spacing:3px;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation">DEAD</button>
       <button id="tr-lost-btn" type="button" style="flex:1;padding:36px 10px;background:var(--miss);color:#fff;border:none;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:48px;letter-spacing:3px;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation">LOST</button>
@@ -1355,6 +1362,7 @@ function trapShowNameInput_squad(sqRef, idx){
 
 // ── TRAPPER ───────────────────────────────────────────────────────────────────
 var trapStation    = 0;
+var stylusMode = false; // when true, requires stylus (fine pointer) for DEAD/LOST
 var trapShooter    = '';
 var trapBirds      = [];
 var trapSquadIdx   = -1;
@@ -1362,6 +1370,66 @@ var trapMemberIdx  = 0;
 var trapScoredCount = 0;
 var scoredSquadKeys = {};
 var fiveStandRound = 1; // 1 or 2 for 5-Stand // tracks squads already scored at each station
+
+function toggleStylusMode(){
+  stylusMode = !stylusMode;
+  var toggle = document.getElementById('stylus-toggle');
+  var knob   = document.getElementById('stylus-knob');
+  var label  = document.getElementById('stylus-label');
+  var deadBtn = document.getElementById('tr-dead-btn');
+  var lostBtn = document.getElementById('tr-lost-btn');
+
+  if(stylusMode){
+    // Stylus mode ON — orange toggle, buttons require fine pointer
+    toggle.style.background = 'var(--org)';
+    knob.style.left = '23px';
+    label.style.color = 'var(--org)';
+    // Disable touch events, only allow stylus (pointer: fine)
+    deadBtn.style.touchAction = 'none';
+    lostBtn.style.touchAction = 'none';
+    deadBtn.style.pointerEvents = 'none';
+    lostBtn.style.pointerEvents = 'none';
+    // Add pointer event listeners for fine pointer (stylus) only
+    deadBtn.addEventListener('pointerdown', stylusDeadHandler);
+    lostBtn.addEventListener('pointerdown', stylusLostHandler);
+    deadBtn.style.opacity = '0.85';
+    lostBtn.style.opacity = '0.85';
+    toast('Stylus mode ON', 'green');
+  } else {
+    // Touch mode — restore normal buttons
+    toggle.style.background = 'var(--bdr)';
+    knob.style.left = '3px';
+    label.style.color = 'var(--dim)';
+    deadBtn.style.pointerEvents = 'auto';
+    lostBtn.style.pointerEvents = 'auto';
+    deadBtn.style.touchAction = 'manipulation';
+    lostBtn.style.touchAction = 'manipulation';
+    deadBtn.removeEventListener('pointerdown', stylusDeadHandler);
+    lostBtn.removeEventListener('pointerdown', stylusLostHandler);
+    deadBtn.style.opacity = '1';
+    lostBtn.style.opacity = '1';
+    toast('Touch mode ON', 'green');
+  }
+}
+
+function stylusDeadHandler(e){
+  // Only fire for stylus (pointerType = 'pen') or mouse, not touch
+  if(e.pointerType === 'pen' || e.pointerType === 'mouse'){
+    e.preventDefault();
+    for(var i=0;i<trapBirds.length;i++){
+      if(trapBirds[i]===null){ trapBirds[i]=true; buildTrapperBirds(); return; }
+    }
+  }
+}
+
+function stylusLostHandler(e){
+  if(e.pointerType === 'pen' || e.pointerType === 'mouse'){
+    e.preventDefault();
+    for(var i=0;i<trapBirds.length;i++){
+      if(trapBirds[i]===null){ trapBirds[i]=false; buildTrapperBirds(); return; }
+    }
+  }
+}
 
 function trShow(screen) {
   document.getElementById('tr-empty').style.display          = screen==='empty'   ? 'block' : 'none';
