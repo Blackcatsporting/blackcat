@@ -834,7 +834,13 @@ function importPaste(){
   var raw = document.getElementById('paste-box').value;
   if(!raw.trim()){ toast('Nothing pasted!'); return; }
   var parsedSquads = parseSquads(raw);
-  alert('DEBUG: raw length='+raw.length+' lines='+raw.split('\n').length+' squads found='+parsedSquads.length+(parsedSquads.length>0?' first squad='+parsedSquads[0].label+' members='+parsedSquads[0].members.length:''));
+  // Show first 3 lines to see exact format
+  var lines = raw.split('\n');
+  var preview = '';
+  for(var i=0;i<Math.min(5,lines.length);i++){
+    preview += 'Line '+i+': ['+lines[i].substring(0,50)+'] len='+lines[i].length+'\n';
+  }
+  alert('Lines='+lines.length+' Squads='+parsedSquads.length+'\n\n'+preview);
   var added = 0;
   S.squads = parsedSquads;
   localStorage.setItem('ct_squads', JSON.stringify(parsedSquads));
