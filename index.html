@@ -728,6 +728,7 @@ function parseSquads(raw) {
 
     var m = line.match(/^(\d+[AB]?)\s+(.*)/);
     if (!m) m = line.match(/^(\d+[AB]?)((?:[A-Z][a-z]|[A-Z]{2,}).*)/);
+    if (!m) m = line.match(/^(\d+[AB]?)([A-Z].*)/);
     if (!m) return;
     var label = m[1];
     var rest  = m[2];
@@ -1719,9 +1720,9 @@ function buildSquadList() {
 
   // Filter squads
   var filtered;
-  if(trapAssignedSquad !== null) {
+  if(trapAssignedSquad !== null && trapAssignedSquad !== undefined && trapAssignedSquad !== '') {
     // Admin has assigned a specific squad — show only that one
-    filtered = squads.filter(function(sq){ return (sq.label||sq.num) == trapAssignedSquad; });
+    filtered = squads.filter(function(sq){ return String(sq.label||sq.num) === String(trapAssignedSquad); });
   } else if(S.eventType === '5STAND') {
     filtered = squads;
   } else if(trapSessionFilter) {
@@ -3247,7 +3248,11 @@ setInterval(function(){
 
     function fbPushAdminLog(log){
       if(!db) return;
-      db.ref('ct_admin').set(log).catch(function(e){  });
+      // Push only the most recent record (first item) as a new entry
+      // This prevents trappers from overwriting each other's scores
+      var record = log[0];
+      if(!record) return;
+      db.ref('ct_admin').push(record).catch(function(e){ console.log('FB push failed',e); });
     }
     function fbPushActiveSession(sess){
       if(!db) return;
