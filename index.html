@@ -658,32 +658,25 @@ function setMode(mode) {
   var adminBtn   = document.getElementById('mode-admin');
   var trapperBtn = document.getElementById('mode-trapper');
   var adminNav   = document.getElementById('nav-admin');
+  var hdr        = document.querySelector('.hdr');
 
   if (mode === 'trapper') {
-    // Trapper button — orange and active
-    trapperBtn.style.background  = 'var(--org)';
-    trapperBtn.style.color       = '#fff';
-    trapperBtn.style.borderColor = 'var(--org)';
-    // Admin button — dim
-    adminBtn.style.background  = 'var(--surf2)';
-    adminBtn.style.color       = 'var(--dim)';
-    adminBtn.style.borderColor = 'var(--bdr)';
-    // Hide admin nav tabs
+    // Hide the entire header and nav — trappers see no admin controls
+    if(hdr) hdr.style.display = 'none';
     adminNav.style.display = 'none';
     // Show only trapper page
     document.querySelectorAll('.pg').forEach(function(p){p.classList.remove('on');});
     document.getElementById('pg-trapper').classList.add('on');
     drawTrapperPick();
   } else {
-    // Admin button — gold and active
+    // Show header and nav for admin
+    if(hdr) hdr.style.display = 'flex';
     adminBtn.style.background  = 'var(--gold)';
     adminBtn.style.color       = '#0f0f07';
     adminBtn.style.borderColor = 'var(--gold)';
-    // Trapper button — dim
     trapperBtn.style.background  = 'var(--surf2)';
     trapperBtn.style.color       = 'var(--dim)';
     trapperBtn.style.borderColor = 'var(--bdr)';
-    // Show admin nav tabs
     adminNav.style.display = 'flex';
     go('setup');
   }
