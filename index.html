@@ -1380,56 +1380,39 @@ function toggleStylusMode(){
   var lostBtn = document.getElementById('tr-lost-btn');
 
   if(stylusMode){
-    // Stylus mode ON — orange toggle, buttons require fine pointer
     toggle.style.background = 'var(--org)';
     knob.style.left = '23px';
     label.style.color = 'var(--org)';
-    // Disable touch events, only allow stylus (pointer: fine)
-    deadBtn.style.touchAction = 'none';
-    lostBtn.style.touchAction = 'none';
-    deadBtn.style.pointerEvents = 'none';
-    lostBtn.style.pointerEvents = 'none';
-    // Add pointer event listeners for fine pointer (stylus) only
-    deadBtn.addEventListener('pointerdown', stylusDeadHandler);
-    lostBtn.addEventListener('pointerdown', stylusLostHandler);
     deadBtn.style.opacity = '0.85';
     lostBtn.style.opacity = '0.85';
-    toast('Stylus mode ON', 'green');
+    toast('Stylus mode ON — Apple Pencil only', 'green');
   } else {
-    // Touch mode — restore normal buttons
     toggle.style.background = 'var(--bdr)';
     knob.style.left = '3px';
     label.style.color = 'var(--dim)';
-    deadBtn.style.pointerEvents = 'auto';
-    lostBtn.style.pointerEvents = 'auto';
-    deadBtn.style.touchAction = 'manipulation';
-    lostBtn.style.touchAction = 'manipulation';
-    deadBtn.removeEventListener('pointerdown', stylusDeadHandler);
-    lostBtn.removeEventListener('pointerdown', stylusLostHandler);
     deadBtn.style.opacity = '1';
     lostBtn.style.opacity = '1';
     toast('Touch mode ON', 'green');
   }
 }
 
-function stylusDeadHandler(e){
-  // Only fire for stylus (pointerType = 'pen') or mouse, not touch
-  if(e.pointerType === 'pen' || e.pointerType === 'mouse'){
-    e.preventDefault();
-    for(var i=0;i<trapBirds.length;i++){
-      if(trapBirds[i]===null){ trapBirds[i]=true; buildTrapperBirds(); return; }
-    }
+// Called from buildTrapperBirds — checks stylus mode before registering tap
+function handleDeadTap(e){
+  if(stylusMode && e && e.pointerType === 'touch') return; // block finger
+  for(var i=0;i<trapBirds.length;i++){
+    if(trapBirds[i]===null){ trapBirds[i]=true; buildTrapperBirds(); return; }
   }
 }
 
-function stylusLostHandler(e){
-  if(e.pointerType === 'pen' || e.pointerType === 'mouse'){
-    e.preventDefault();
-    for(var i=0;i<trapBirds.length;i++){
-      if(trapBirds[i]===null){ trapBirds[i]=false; buildTrapperBirds(); return; }
-    }
+function handleLostTap(e){
+  if(stylusMode && e && e.pointerType === 'touch') return; // block finger
+  for(var i=0;i<trapBirds.length;i++){
+    if(trapBirds[i]===null){ trapBirds[i]=false; buildTrapperBirds(); return; }
   }
 }
+
+function stylusDeadHandler(e){}
+function stylusLostHandler(e){}
 
 function trShow(screen) {
   document.getElementById('tr-empty').style.display          = screen==='empty'   ? 'block' : 'none';
@@ -1921,16 +1904,10 @@ function buildTrapperBirds() {
     resultsCol.appendChild(resDiv);
   });
 
-  document.getElementById('tr-dead-btn').onclick = function() {
-    for (var i=0; i<trapBirds.length; i++) {
-      if (trapBirds[i]===null) { trapBirds[i]=true; buildTrapperBirds(); return; }
-    }
-  };
-  document.getElementById('tr-lost-btn').onclick = function() {
-    for (var i=0; i<trapBirds.length; i++) {
-      if (trapBirds[i]===null) { trapBirds[i]=false; buildTrapperBirds(); return; }
-    }
-  };
+  var deadBtn = document.getElementById('tr-dead-btn');
+  var lostBtn = document.getElementById('tr-lost-btn');
+  deadBtn.onpointerdown = function(e){ handleDeadTap(e); };
+  lostBtn.onpointerdown = function(e){ handleLostTap(e); };
 }
 
 function trapSubmit() {
@@ -2883,37 +2860,39 @@ setInterval(function(){
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script>
     var db = null; // already declared in main script
-    try {
-      const firebaseConfig = {
-        apiKey: "AIzaSyBZkp2x4ZEqpBKgP-kIJ8LVQ6FptRBz-Y",
-        authDomain: "black-cat-4a424.firebaseapp.com",
-        databaseURL: "https://black-cat-4a424-default-rtdb.firebaseio.com",
-        projectId: "black-cat-4a424",
-        storageBucket: "black-cat-4a424.appspot.com",
-        messagingSenderId: "179649653199",
-        appId: "1:179649653199:web:6c2fcf5a731971df8dcaba"
-      };
-      firebase.initializeApp(firebaseConfig);
-      db = firebase.database();
-    } catch(e) {
-      console.warn('Firebase init failed:', e);
+    function initFirebase(){
+      if(typeof firebase === 'undefined') return;
+      try {
+        const firebaseConfig = {
+          apiKey: "AIzaSyBZkp2x4ZEqpBKgP-kIJ8LVQ6FptRBz-Y",
+          authDomain: "black-cat-4a424.firebaseapp.com",
+          databaseURL: "https://black-cat-4a424-default-rtdb.firebaseio.com",
+          projectId: "black-cat-4a424",
+          storageBucket: "black-cat-4a424.appspot.com",
+          messagingSenderId: "179649653199",
+          appId: "1:179649653199:web:6c2fcf5a731971df8dcaba"
+        };
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+      } catch(e) { /* already initialized */ }
     }
+    initFirebase();
 
     function fbPushAdminLog(log){
       if(!db) return;
-      db.ref('ct_admin').set(log).catch(function(e){ console.warn('FB push failed',e); });
+      db.ref('ct_admin').set(log).catch(function(e){  });
     }
     function fbPushActiveSession(sess){
       if(!db) return;
-      db.ref('ct_active_session').set(sess).catch(function(e){ console.warn('FB push failed',e); });
+      db.ref('ct_active_session').set(sess).catch(function(e){  });
     }
     function fbPushSquads(squads){
       if(!db) return;
-      db.ref('ct_squads').set(squads).catch(function(e){ console.warn('FB push failed',e); });
+      db.ref('ct_squads').set(squads).catch(function(e){  });
     }
     function fbPushEventState(state){
       if(!db) return;
-      db.ref('ct_event_state').set(state).catch(function(e){ console.warn('FB push failed',e); });
+      db.ref('ct_event_state').set(state).catch(function(e){  });
     }
     function fbListenEventState(callback){
       if(!db) return;
