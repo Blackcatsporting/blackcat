@@ -712,89 +712,94 @@ function parseSquads(raw) {
   var squads = [];
   var sessionLabel = '';
 
+  // Normalize line endings
+  raw = raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+
   raw.split('\n').forEach(function(line){
     line = line.trim();
     if (!line) return;
     if (line === 'No Entrants') return;
 
-    // Session line
+    // Session line - contains time like 11:30 AM
     if (/\d+:\d+\s*(AM|PM)/i.test(line)) {
-      if (line.indexOf('/') > -1) {
-        sessionLabel = line.split('/')[0].replace(/\s*[\u2014\-]+\s*/g,' - ').trim();
-      } else {
-        sessionLabel = line.replace(/\s*[\u2014\-]+\s*/g,' - ').trim();
-      }
+      sessionLabel = line.replace(/\s*[\u2014\-]+\s*/g,' - ').trim();
       return;
     }
 
-    // Squad line
+    // Try to match squad label at start of line
+    // Handles: "1A David Smith" or "1ADavid Smith" or "1 David Smith"
     var m = line.match(/^(\d+[AB]?)\s+(.*)/);
-    if (!m) m = line.match(/^(\d+[AB]?)((?:[A-Z][a-z]|[A-Z]{2,}).*)/);
     if (!m) m = line.match(/^(\d+[AB]?)([A-Z].*)/);
     if (!m) return;
 
     var label = m[1];
-    var rest  = m[2];
-    if(!rest || rest.trim().length === 0) return;
+    var rest  = m[2].trim();
+    if(!rest) return;
 
-    rest = rest.replace(/,/g,'');
+    // Remove commas
+    rest = rest.replace(/,/g,' ');
 
-    // Protect Jr/Sr/II/III/IV suffixes
+    // Protect prefixes: Mc Mac De Du Di Le La
+    rest = rest.replace(/\b(Mc|Mac|De|Du|Di|Le|La)([A-Z])/g, '$1PROT$2');
+
+    // Protect hyphens in names
+    rest = rest.replace(/([A-Za-z])-([A-Za-z])/g, '$1HYPH$2');
+
+    // Protect apostrophes
+    rest = rest.replace(/([A-Za-z])'([A-Za-z])/g, '$1APOS$2');
+
+    // Protect Jr Sr II III IV
     rest = rest.replace(/\s+(Jr\.?|Sr\.)\s+([A-Z])/gi, ' $1\n$2');
     rest = rest.replace(/\s+(Jr\.?|Sr\.)$/gi, ' $1');
     rest = rest.replace(/\s+(II|III|IV)\s+([A-Z])/g, ' $1\n$2');
     rest = rest.replace(/\s+(II|III|IV)$/g, ' $1');
 
-    // Protect Mc/Mac/De/Du/Di/Le/La prefixes
-    rest = rest.replace(/\b(Mc|Mac|De|Du|Di|Le|La)([A-Z][a-z])/g, '$1PROT$2');
-
-    // Protect hyphenated names
-    rest = rest.replace(/([A-Za-z])-([a-zA-Z])/g, function(m,a,b){ return a+'HYPH'+b.toUpperCase(); });
-
-    // Protect apostrophes
-    rest = rest.replace(/([A-Za-z])'([A-Za-z])/g, '$1APOS$2');
-
     // Protect middle initials "Mike G Wilson"
-    rest = rest.replace(/([A-Z][a-z]+)\s+([A-Z])\s+([A-Z][a-z])/g, '$1 $2INIT $3');
+    rest = rest.replace(/([A-Z][a-z]+) ([A-Z]) ([A-Z][a-z])/g, '$1 $2MINIT$3');
 
-    // Protect double initials "H W Constantin"
-    rest = rest.replace(/\b([A-Z])\s+([A-Z])\s+([A-Z][a-z])/g, '$1INIT$2 $3');
-
-    // Split on lowercase->uppercase boundary
+    // Split names at lowercase-to-uppercase boundary
     rest = rest.replace(/([a-z])([A-Z])/g, '$1\n$2');
 
-    // Restore protections
-    rest = rest.replace(/PROT/g,'').replace(/HYPH/g,'-').replace(/APOS/g,"'").replace(/INIT/g,' ');
+    // Restore
+    rest = rest.replace(/PROT/g,'');
+    rest = rest.replace(/HYPH/g,'-');
+    rest = rest.replace(/APOS/g,"'");
+    rest = rest.replace(/MINIT/g,' ');
     rest = rest.replace(/  +/g,' ');
 
     var tokens = rest.split('\n').map(function(t){
-      t = t.trim();
-      if(t.length > 0) t = t.charAt(0).toUpperCase() + t.slice(1);
-      return t;
+      return t.trim();
     }).filter(function(t){ return t.length > 1; });
 
-    var names = []; var i = 0;
+    var names = [];
+    var i = 0;
     while(i < tokens.length){
       var t = tokens[i];
-      var words = t.split(/\s+/).filter(function(w){ return w; });
-      if(words.length >= 2){ names.push(t); i++; }
-      else {
+      var words = t.split(/\s+/).filter(Boolean);
+      if(words.length >= 2){
+        names.push(t); i++;
+      } else if(words.length === 1){
         var w = words[0];
         if(/^(Jr\.?|Sr\.?|II|III|IV)$/i.test(w) && names.length > 0){
           names[names.length-1] += ' ' + w; i++;
+        } else if(i+1 < tokens.length){
+          var nxt = tokens[i+1];
+          var nw = nxt.split(/\s+/).filter(Boolean);
+          if(nw.length === 1){ names.push(w+' '+nxt); i+=2; }
+          else { names.push(w); i++; }
         } else {
-          var next = tokens[i+1];
-          if(next){
-            var nw = next.split(/\s+/).filter(function(w){ return w; });
-            if(nw.length === 1){ names.push(w + ' ' + next); i += 2; }
-            else { names.push(w); i++; }
-          } else { names.push(w); i++; }
+          names.push(w); i++;
         }
-      }
+      } else { i++; }
     }
 
     if(names.length > 0){
-      squads.push({ label:label, session:sessionLabel, num:parseInt(label), members:names });
+      squads.push({
+        label: label,
+        session: sessionLabel,
+        num: parseInt(label)||1,
+        members: names
+      });
     }
   });
 
@@ -834,13 +839,7 @@ function importPaste(){
   var raw = document.getElementById('paste-box').value;
   if(!raw.trim()){ toast('Nothing pasted!'); return; }
   var parsedSquads = parseSquads(raw);
-  // Show first 3 lines to see exact format
-  var lines = raw.split('\n');
-  var preview = '';
-  for(var i=0;i<Math.min(5,lines.length);i++){
-    preview += 'Line '+i+': ['+lines[i].substring(0,50)+'] len='+lines[i].length+'\n';
-  }
-  alert('Lines='+lines.length+' Squads='+parsedSquads.length+'\n\n'+preview);
+
   var added = 0;
   S.squads = parsedSquads;
   localStorage.setItem('ct_squads', JSON.stringify(parsedSquads));
