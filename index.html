@@ -118,7 +118,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
   </div>
 </div>
 
-<div id="app-wrap">
+<div id="app-wrap" style="display:none">
 <div class="hdr">
   <div class="logo" style="display:flex;align-items:center;gap:10px">
     <img src="icon.png" style="width:36px;height:auto;filter:invert(0)" alt="logo">
@@ -141,7 +141,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </div>
 
 <!-- SETUP -->
-<div id="pg-setup" class="pg on">
+<div id="pg-setup" class="pg">
   <div class="card">
     <div class="ctitle">Event Setup</div>
     <label class="lbl">Event Name</label>
@@ -613,6 +613,7 @@ function checkAdminPin(){
 
 function startAsAdmin() {
   document.getElementById('startup-overlay').style.display = 'none';
+  document.getElementById('app-wrap').style.display = 'block';
   setMode('admin');
 }
 
@@ -650,14 +651,10 @@ function confirmTrapperName() {
 
   if(db){
     toast('Connecting...', 'green');
-    var storedKey = localStorage.getItem('ct_event_key');
-    if(storedKey) {
-      connectAsTrapper();
-    } else {
-      showEventCodeInput();
-    }
+    showEventCodeInput();
   } else {
     toast('No Firebase connection', '');
+    document.getElementById('app-wrap').style.display = 'block';
     setMode('trapper');
   }
 }
@@ -683,6 +680,7 @@ function submitEventCode(){
   localStorage.setItem('ct_event_key', code);
   var ov = document.getElementById('event-code-overlay');
   if(ov) ov.remove();
+  document.getElementById('app-wrap').style.display = 'block';
   connectAsTrapper();
 }
 
@@ -752,6 +750,7 @@ function connectAsTrapper(){
                 buildSquadList();
               }
             });
+            document.getElementById('app-wrap').style.display = 'block';
             setMode('trapper');
           });
         });
