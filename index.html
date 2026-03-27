@@ -680,7 +680,6 @@ function submitEventCode(){
   localStorage.setItem('ct_event_key', code);
   var ov = document.getElementById('event-code-overlay');
   if(ov) ov.remove();
-  document.getElementById('app-wrap').style.display = 'block';
   connectAsTrapper();
 }
 
