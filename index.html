@@ -720,6 +720,21 @@ function connectAsTrapper(){
           if(sess) localStorage.setItem('ct_active_session', sess);
           document.getElementById('app-wrap').style.display = 'block';
           setMode('trapper');
+          // Listen for clear signal from admin
+          db.ref(getKey()+'/ct_clear').on('value', function(snap){
+            var clearTime = snap.val();
+            if(clearTime && clearTime > Date.now() - 5000){
+              // Admin cleared event — reset trapper
+              localStorage.removeItem('ct_squads');
+              localStorage.removeItem('ct_active_session');
+              localStorage.removeItem('ct_event_key');
+              S.started = false; S.squads = []; S.shooters = [];
+              toast('Event cleared by admin', '');
+              setTimeout(function(){
+                location.reload();
+              }, 1500);
+            }
+          });
         }).catch(function(){ 
           document.getElementById('app-wrap').style.display = 'block';
           setMode('trapper'); 
@@ -1782,6 +1797,14 @@ function buildSquadList() {
 
   var squads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
   if(!squads.length) squads = S.squads.length ? S.squads : [{num:1, label:'1', session:'', members:S.shooters}];
+  // Deduplicate squads by label+session
+  var seen = {};
+  squads = squads.filter(function(sq){
+    var key = (sq.label||sq.num) + '|' + (sq.session||'');
+    if(seen[key]) return false;
+    seen[key] = true;
+    return true;
+  });
 
   var stationNum = trapStation + 1;
   var activeSess = localStorage.getItem('ct_active_session')||'';
