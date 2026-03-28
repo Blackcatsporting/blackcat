@@ -1318,7 +1318,10 @@ function newEvent(){
 function startRound(){
   var n=document.getElementById('ev-name').value.trim();
   if(!n){toast('Enter event name');return;}
-  if(!S.shooters.length){toast('Add shooters first');return;}
+  // Apply manual squads first so their members count as shooters
+  applyManualSquads();
+
+  if(!S.shooters.length && !S.squads.length){toast('Add shooters or build squads first');return;}
 
   var savedSquads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
   if(savedSquads.length > 0 && S.squads.length === 0){
@@ -1339,8 +1342,6 @@ function startRound(){
     S.scores[s]={};
     for(var i=0;i<S.stations;i++) S.scores[s][i]=new Array(S.stationBirds[i]).fill(null);
   });
-
-  applyManualSquads();
 
   if(!S.squads || S.squads.length===0){
     S.squads=[{num:1, label:'1', members:S.shooters.slice()}];
