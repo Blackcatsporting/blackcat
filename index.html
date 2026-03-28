@@ -1359,8 +1359,8 @@ function startRound(){
     eventType:     S.eventType
   });
   fbPushSquads(S.squads);
-  // Save event key
-  var key = getEventKey();
+  // Save event key based on event name
+  var key = S.name.replace(/[^A-Z0-9]/g,'_').substring(0,40);
   localStorage.setItem('ct_event_key', key);
   // Show event code
   var codeDisp = document.getElementById('event-code-display');
