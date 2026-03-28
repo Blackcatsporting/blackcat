@@ -3496,7 +3496,15 @@ setInterval(function(){
     }
     function fbPushSquads(squads){
       if(!db) return;
-      db.ref(getKey()+'/ct_squads').set(squads).catch(function(e){});
+      // Deduplicate before pushing
+      var seen = {};
+      var clean = squads.filter(function(sq){
+        var key = (sq.label||sq.num) + '|' + (sq.session||'');
+        if(seen[key]) return false;
+        seen[key] = true;
+        return true;
+      });
+      db.ref(getKey()+'/ct_squads').set(clean).catch(function(e){});
     }
     function fbPushEventState(state){
       if(!db) return;
@@ -3573,6 +3581,14 @@ setInterval(function(){
     });
     fbListenSquads(function(squads){
       var arr = Array.isArray(squads) ? squads : Object.values(squads);
+      // Deduplicate by label+session
+      var seen = {};
+      arr = arr.filter(function(sq){
+        var key = (sq.label||sq.num) + '|' + (sq.session||'');
+        if(seen[key]) return false;
+        seen[key] = true;
+        return true;
+      });
       localStorage.setItem('ct_squads', JSON.stringify(arr));
       if(!S.squads.length) S.squads = arr;
     });
