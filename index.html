@@ -662,52 +662,6 @@ function confirmTrapperName() {
   }, 100);
 }
 
-function submitEventCode(){
-  var inp = document.getElementById('event-code-inp');
-  var code = inp ? inp.value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'_') : '';
-  if(!code){ toast('Enter an event code'); return; }
-  
-  localStorage.setItem('ct_event_key', code);
-  
-  // Hide startup overlay and show app
-  document.getElementById('startup-overlay').style.display = 'none';
-  
-  if(db){
-    toast('Connecting...', 'green');
-    var eventRef = db.ref(code);
-    eventRef.child('ct_event_state').once('value').then(function(snap){
-      var state = snap.val();
-      if(state && state.started){
-        S.started = state.started;
-        S.name = state.name;
-        S.stations = state.stations;
-        S.birds = state.birds;
-        S.stationBirds = state.stationBirds;
-        S.shooters = state.shooters;
-        if(!S.eventType) S.eventType = state.eventType || 'SC';
-        toast('Connected to: '+state.name, 'green');
-      } else {
-        toast('No active event found', '');
-      }
-      eventRef.child('ct_squads').once('value').then(function(snap2){
-        var sq = snap2.val();
-        if(sq){
-          var arr = Array.isArray(sq) ? sq : Object.values(sq);
-          localStorage.setItem('ct_squads', JSON.stringify(arr));
-          if(!S.squads.length) S.squads = arr;
-        }
-        eventRef.child('ct_active_session').once('value').then(function(snap3){
-          var sess = snap3.val();
-          if(sess) localStorage.setItem('ct_active_session', sess);
-          setMode('trapper');
-        });
-      });
-    });
-  } else {
-    setMode('trapper');
-  }
-}
-
 function showEventCodeInput(){
   var overlay = document.createElement('div');
   overlay.id = 'event-code-overlay';
