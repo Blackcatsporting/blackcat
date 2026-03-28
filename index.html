@@ -118,7 +118,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
   </div>
 </div>
 
-<div id="app-wrap" style="display:none">
+<div id="app-wrap">
 <div class="hdr">
   <div class="logo" style="display:flex;align-items:center;gap:10px">
     <img src="icon.png" style="width:36px;height:auto;filter:invert(0)" alt="logo">
@@ -645,16 +645,65 @@ function confirmTrapperName() {
     return; 
   }
   trapperName = name;
-
   S.eventType = trapperEventType;
-  document.getElementById('startup-overlay').style.display = 'none';
 
+  // Replace startup overlay content with event code input
+  var overlay = document.getElementById('startup-overlay');
+  overlay.innerHTML = '<div style="width:100%;max-width:400px;text-align:center">'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--gold);letter-spacing:3px;margin-bottom:6px">EVENT CODE</div>'
+    +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:6px">Hi '+name+'!</div>'
+    +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">Enter the event code from your admin</div>'
+    +'<input id="event-code-inp" class="inp" type="text" placeholder="e.g. SPRING_CLASSIC_2026" style="font-size:18px;padding:16px;margin-bottom:14px;text-align:center;text-transform:uppercase">'
+    +'<button onclick="submitEventCode()" style="display:block;width:100%;padding:16px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer">JOIN EVENT</button>'
+    +'</div>';
+  setTimeout(function(){ 
+    var inp = document.getElementById('event-code-inp');
+    if(inp) inp.focus();
+  }, 100);
+}
+
+function submitEventCode(){
+  var inp = document.getElementById('event-code-inp');
+  var code = inp ? inp.value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'_') : '';
+  if(!code){ toast('Enter an event code'); return; }
+  
+  localStorage.setItem('ct_event_key', code);
+  
+  // Hide startup overlay and show app
+  document.getElementById('startup-overlay').style.display = 'none';
+  
   if(db){
     toast('Connecting...', 'green');
-    showEventCodeInput();
+    var eventRef = db.ref(code);
+    eventRef.child('ct_event_state').once('value').then(function(snap){
+      var state = snap.val();
+      if(state && state.started){
+        S.started = state.started;
+        S.name = state.name;
+        S.stations = state.stations;
+        S.birds = state.birds;
+        S.stationBirds = state.stationBirds;
+        S.shooters = state.shooters;
+        if(!S.eventType) S.eventType = state.eventType || 'SC';
+        toast('Connected to: '+state.name, 'green');
+      } else {
+        toast('No active event found', '');
+      }
+      eventRef.child('ct_squads').once('value').then(function(snap2){
+        var sq = snap2.val();
+        if(sq){
+          var arr = Array.isArray(sq) ? sq : Object.values(sq);
+          localStorage.setItem('ct_squads', JSON.stringify(arr));
+          if(!S.squads.length) S.squads = arr;
+        }
+        eventRef.child('ct_active_session').once('value').then(function(snap3){
+          var sess = snap3.val();
+          if(sess) localStorage.setItem('ct_active_session', sess);
+          setMode('trapper');
+        });
+      });
+    });
   } else {
-    toast('No Firebase connection', '');
-    document.getElementById('app-wrap').style.display = 'block';
     setMode('trapper');
   }
 }
@@ -686,7 +735,7 @@ function submitEventCode(){
 function connectAsTrapper(){
   if(db){
     toast('Connecting...', 'green');
-    fbRef('ct_event_state').once('value').then(function(snap){
+    db.ref(getKey()+'/ct_event_state').once('value').then(function(snap){
       var state = snap.val();
       if(state && state.started){
         toast('Event found: '+state.name, 'green');
@@ -701,7 +750,7 @@ function connectAsTrapper(){
         toast('No event found in Firebase', '');
       }
 
-      fbRef('ct_squads').once('value').then(function(snap2){
+      db.ref(getKey()+'/ct_squads').once('value').then(function(snap2){
         var sq = snap2.val();
         if(sq){
           var arr = Array.isArray(sq) ? sq : Object.values(sq);
@@ -709,19 +758,19 @@ function connectAsTrapper(){
           if(!S.squads.length) S.squads = arr;
         }
 
-        fbRef('ct_active_session').once('value').then(function(snap3){
+        db.ref(getKey()+'/ct_active_session').once('value').then(function(snap3){
           var sess = snap3.val();
           if(sess) localStorage.setItem('ct_active_session', sess);
 
           var trapKey = trapperName.replace(/[.#$[\]]/g,'_');
           // Register trapper in Firebase
-          fbRef('ct_trappers/'+trapKey).set({
+          db.ref('DEFAULT/' + 'ct_trappers/'+trapKey).set({
             name: trapperName,
             checkedIn: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
             assignedSquad: null,
             assignedStation: null
           });
-          fbRef('ct_trappers/'+trapKey).once('value').then(function(snap4){
+          db.ref('DEFAULT/' + 'ct_trappers/'+trapKey).once('value').then(function(snap4){
             var assignment = snap4.val();
             if(assignment && assignment.assignedStation !== null){
               trapStation = parseInt(assignment.assignedStation)||0;
@@ -732,7 +781,7 @@ function connectAsTrapper(){
               trapAssignedSquad = assignment.assignedSquad;
             }
 
-            fbRef('ct_trappers/'+trapKey).on('value', function(snap){
+            db.ref('DEFAULT/' + 'ct_trappers/'+trapKey).on('value', function(snap){
               var a = snap.val();
               if(!a) return;
               if(a.assignedStation !== null && a.assignedStation !== undefined){
@@ -1255,11 +1304,15 @@ function newEvent(){
   adminLog=[];
   localStorage.setItem('ct_admin','[]');
   if(db){
-    fbRef('ct_admin').set([]);
-    fbRef('ct_squads').set([]);
-    fbRef('ct_event_state').set(null);
-    fbRef('ct_trappers').set(null);
-    fbRef('ct_active_session').set('');
+    db.ref(getKey()+'/ct_admin').set(null);
+    db.ref(getKey()+'/ct_squads').set(null);
+    db.ref(getKey()+'/ct_event_state').set(null);
+    db.ref(getKey()+'/ct_trappers').set(null);
+    db.ref(getKey()+'/ct_active_session').set('');
+    db.ref(getKey()+'/ct_squads').set([]);
+    db.ref(getKey()+'/ct_event_state').set(null);
+    db.ref(getKey()+'/ct_trappers').set(null);
+    db.ref(getKey()+'/ct_active_session').set('');
   }
 
   localStorage.removeItem('ct_squads');
@@ -2667,7 +2720,7 @@ function setActiveSession(sess){
 function drawAssign(){
   if(!db){ document.getElementById('assign-body').innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-txt">Firebase not connected</div></div>'; return; }
 
-  fbRef('ct_trappers').once('value').then(function(snap){
+  db.ref(getKey()+'/ct_trappers').once('value').then(function(snap){
     var trappers = snap.val();
     var el = document.getElementById('assign-body');
     if(!trappers || !Object.keys(trappers).length){
@@ -3382,6 +3435,15 @@ drawChips();
 buildStationBirdsList();
 renderManualSquads();
 
+// Failsafe - if startup overlay is gone but app-wrap is hidden, show it
+setTimeout(function(){
+  var overlay = document.getElementById('startup-overlay');
+  var wrap = document.getElementById('app-wrap');
+  if(overlay && overlay.style.display === 'none' && wrap){
+    wrap.style.display = 'block';
+  }
+}, 2000);
+
 // Watch for session changes — refresh trapper list every 5 seconds
 var lastActiveSession = localStorage.getItem('ct_active_session')||'';
 setInterval(function(){
@@ -3423,48 +3485,49 @@ setInterval(function(){
     }
     initFirebase();
 
+    function getKey(){ return localStorage.getItem('ct_event_key')||'DEFAULT'; }
+
     function fbPushAdminLog(log){
       if(!db) return;
-
       var record = log[0];
       if(!record) return;
-      fbRef('ct_admin').push(record).catch(function(e){ console.log('FB push failed',e); });
+      db.ref(getKey()+'/ct_admin').push(record).catch(function(e){});
     }
     function fbPushActiveSession(sess){
       if(!db) return;
-      fbRef('ct_active_session').set(sess).catch(function(e){  });
+      db.ref(getKey()+'/ct_active_session').set(sess).catch(function(e){});
     }
     function fbPushSquads(squads){
       if(!db) return;
-      fbRef('ct_squads').set(squads).catch(function(e){  });
+      db.ref(getKey()+'/ct_squads').set(squads).catch(function(e){});
     }
     function fbPushEventState(state){
       if(!db) return;
-      fbRef('ct_event_state').set(state).catch(function(e){  });
+      db.ref(getKey()+'/ct_event_state').set(state).catch(function(e){});
     }
     function fbListenEventState(callback){
       if(!db) return;
-      fbRef('ct_event_state').on('value', function(snap){
+      db.ref(getKey()+'/ct_event_state').on('value', function(snap){
         var val = snap.val();
         if(val) callback(val);
       });
     }
     function fbListenAdminLog(callback){
       if(!db) return;
-      fbRef('ct_admin').on('value', function(snap){
+      db.ref(getKey()+'/ct_admin').on('value', function(snap){
         var val = snap.val();
         if(val) callback(val);
       });
     }
     function fbListenActiveSession(callback){
       if(!db) return;
-      fbRef('ct_active_session').on('value', function(snap){
+      db.ref(getKey()+'/ct_active_session').on('value', function(snap){
         callback(snap.val() || '');
       });
     }
     function fbListenSquads(callback){
       if(!db) return;
-      fbRef('ct_squads').on('value', function(snap){
+      db.ref(getKey()+'/ct_squads').on('value', function(snap){
         var val = snap.val();
         if(val) callback(val);
       });
