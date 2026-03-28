@@ -2708,7 +2708,7 @@ function saveAssignment(btn){
   var station = parseInt(stSel.value);
   if(!squad){ toast('Select a squad first'); return; }
 
-  db.ref('ct_trappers/'+tKey).update({
+  db.ref(getKey()+'/ct_trappers/'+tKey).update({
     assignedSquad: squad,
     assignedStation: station
   }).then(function(){
