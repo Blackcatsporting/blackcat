@@ -522,6 +522,8 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 var trapperName = '';
 var trapperEventType = 'SC';
 var db = null;
+function getKey(){ return localStorage.getItem('ct_event_key')||'DEFAULT'; }
+
 var S = {started:false,name:'',stations:10,birds:10,stationBirds:[],shooters:[],squads:[],scores:{},active:'',eventType:'SC'};
 var activeSession = '';
 var adminLog = JSON.parse(localStorage.getItem('ct_admin')   || '[]');
@@ -1777,12 +1779,13 @@ function updateArrivalNote() {
 function drawTrapperPick() {
   if (!S.started || !S.shooters.length) {
     trShow('empty');
-    // Auto-check Firebase every 10 seconds
+    // Auto-check Firebase every 5 seconds
     if(!window._trapperRefreshTimer){
       window._trapperRefreshTimer = setInterval(function(){
         if(S.started){ clearInterval(window._trapperRefreshTimer); window._trapperRefreshTimer=null; drawTrapperPick(); return; }
         if(db){
-          db.ref(getKey()+'/ct_event_state').once('value').then(function(snap){
+          var k = localStorage.getItem('ct_event_key')||'DEFAULT';
+          db.ref(k+'/ct_event_state').once('value').then(function(snap){
             var state = snap.val();
             if(state && state.started){
               S.started=state.started; S.name=state.name; S.stations=state.stations;
@@ -1943,6 +1946,7 @@ function buildSquadList() {
     return done;
   }
 
+  var renderedSqKeys = {};
   filtered.forEach(function(sq, fi){
 
     var realIdx = -1;
@@ -1953,6 +1957,8 @@ function buildSquadList() {
 
     var sqKey = (sq.label||sq.num) + '_' + trapStation;
     if(scoredSquadKeys[sqKey]) return;
+    if(renderedSqKeys[sqKey]) return;
+    renderedSqKeys[sqKey] = true;
 
     var done = stationsDone(sq);
     var isComplete = done >= S.stations;
@@ -2714,8 +2720,8 @@ function setActiveSession(sess){
 function drawAssign(){
   if(!db){ document.getElementById('assign-body').innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-txt">Firebase not connected</div></div>'; return; }
 
-  var key = getKey();
-  document.getElementById('assign-body').innerHTML='<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);text-align:center;padding:10px">Looking for trappers under event: <strong style="color:var(--gold)">'+key+'</strong></div>';
+  var key = localStorage.getItem('ct_event_key')||'DEFAULT';
+  document.getElementById('assign-body').innerHTML='<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);text-align:center;padding:10px">Event: <strong style="color:var(--gold)">'+key+'</strong> — checking for trappers...</div>';
 
   db.ref(key+'/ct_trappers').once('value').then(function(snap){
     var trappers = snap.val();
@@ -2774,7 +2780,8 @@ function saveAssignment(btn){
   var station = parseInt(stSel.value);
   if(!squad){ toast('Select a squad first'); return; }
 
-  db.ref(getKey()+'/ct_trappers/'+tKey).update({
+  var saveKey = localStorage.getItem('ct_event_key')||'DEFAULT';
+  db.ref(saveKey+'/ct_trappers/'+tKey).update({
     assignedSquad: squad,
     assignedStation: station
   }).then(function(){
