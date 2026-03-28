@@ -274,7 +274,9 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
   <!-- SCREEN A: Not started -->
   <div id="tr-empty" class="empty">
     <div class="empty-icon">&#127919;</div>
-    <div class="empty-txt">Start a round first</div>
+    <div class="empty-txt">Waiting for admin to start event</div>
+    <div class="empty-txt" style="font-size:11px;margin-top:8px">Make sure admin has tapped Start Round</div>
+    <button onclick="switchToTrapper()" style="margin-top:20px;padding:12px 24px;background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;color:var(--dim);font-family:DM Mono,monospace;font-size:11px;letter-spacing:1px;cursor:pointer">↩ START OVER</button>
   </div>
 
   <!-- SCREEN B: Station + Squad selection -->
@@ -297,6 +299,9 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
     </div>
     <div id="tr-arrival-note" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--org);letter-spacing:1px;text-transform:uppercase;text-align:center;margin-bottom:12px"></div>
     <div id="tr-squad-list"></div>
+    <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--bdr)">
+      <button onclick="switchToTrapper()" style="padding:10px 20px;background:none;border:1px solid var(--bdr);border-radius:8px;color:var(--dim);font-family:DM Mono,monospace;font-size:10px;letter-spacing:1px;cursor:pointer">↩ SIGN OUT / START OVER</button>
+    </div>
   </div>
 
   <!-- SCREEN C: Scoring a squad - stays on this screen for ALL members -->
@@ -757,13 +762,22 @@ function confirmTrapperName_unused(){
 }
 
 function switchToTrapper(){
-  // Clear stored event key and trapper state so fresh login is required
+  // Clear refresh timer
+  if(window._trapperRefreshTimer){ clearInterval(window._trapperRefreshTimer); window._trapperRefreshTimer=null; }
+  // Clear stored event key and trapper state
   localStorage.removeItem('ct_event_key');
   trapperName = '';
   trapAssignedSquad = null;
   trapStation = 0;
-  // Show startup overlay
+  S.started = false; S.squads = []; S.shooters = [];
+  // Show startup overlay fresh
   document.getElementById('startup-overlay').style.display = 'flex';
+  // Restore original startup content if it was replaced
+  var overlay = document.getElementById('startup-overlay');
+  if(!document.getElementById('trapper-name-inp')){
+    location.reload();
+    return;
+  }
   document.getElementById('trapper-name-inp').value = '';
 }
 
@@ -1761,7 +1775,32 @@ function updateArrivalNote() {
 
 // Called when trapper tab opens
 function drawTrapperPick() {
-  if (!S.started || !S.shooters.length) { trShow('empty'); return; }
+  if (!S.started || !S.shooters.length) {
+    trShow('empty');
+    // Auto-check Firebase every 10 seconds
+    if(!window._trapperRefreshTimer){
+      window._trapperRefreshTimer = setInterval(function(){
+        if(S.started){ clearInterval(window._trapperRefreshTimer); window._trapperRefreshTimer=null; drawTrapperPick(); return; }
+        if(db){
+          db.ref(getKey()+'/ct_event_state').once('value').then(function(snap){
+            var state = snap.val();
+            if(state && state.started){
+              S.started=state.started; S.name=state.name; S.stations=state.stations;
+              S.birds=state.birds; S.stationBirds=state.stationBirds; S.shooters=state.shooters;
+              S.eventType=state.eventType||'SC';
+              db.ref(getKey()+'/ct_squads').once('value').then(function(snap2){
+                var sq=snap2.val();
+                if(sq){ var arr=Array.isArray(sq)?sq:Object.values(sq); localStorage.setItem('ct_squads',JSON.stringify(arr)); S.squads=arr; }
+                clearInterval(window._trapperRefreshTimer); window._trapperRefreshTimer=null;
+                drawTrapperPick();
+              });
+            }
+          });
+        }
+      }, 5000);
+    }
+    return;
+  }
 
   var trStLbl = document.getElementById('tr-station-label');
   if(trStLbl) trStLbl.textContent = 'MY ' + stationLabel().toUpperCase();
