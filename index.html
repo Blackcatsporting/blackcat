@@ -2714,7 +2714,10 @@ function setActiveSession(sess){
 function drawAssign(){
   if(!db){ document.getElementById('assign-body').innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-txt">Firebase not connected</div></div>'; return; }
 
-  db.ref(getKey()+'/ct_trappers').once('value').then(function(snap){
+  var key = getKey();
+  document.getElementById('assign-body').innerHTML='<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);text-align:center;padding:10px">Looking for trappers under event: <strong style="color:var(--gold)">'+key+'</strong></div>';
+
+  db.ref(key+'/ct_trappers').once('value').then(function(snap){
     var trappers = snap.val();
     var el = document.getElementById('assign-body');
     if(!trappers || !Object.keys(trappers).length){
