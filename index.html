@@ -1365,6 +1365,10 @@ function startRound(){
 
   localStorage.setItem('ct_squads', JSON.stringify(S.squads));
 
+  // Save event key FIRST before any Firebase pushes
+  var key = S.name.replace(/[^A-Z0-9]/g,'_').substring(0,40);
+  localStorage.setItem('ct_event_key', key);
+
   fbPushEventState({
     started:       S.started,
     name:          S.name,
@@ -1375,9 +1379,6 @@ function startRound(){
     eventType:     S.eventType
   });
   fbPushSquads(S.squads);
-  // Save event key based on event name
-  var key = S.name.replace(/[^A-Z0-9]/g,'_').substring(0,40);
-  localStorage.setItem('ct_event_key', key);
   // Show event code
   var codeDisp = document.getElementById('event-code-display');
   var codeVal = document.getElementById('event-code-value');
