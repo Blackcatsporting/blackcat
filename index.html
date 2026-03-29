@@ -725,6 +725,32 @@ function connectAsTrapper(){
         db.ref(getKey()+'/ct_active_session').once('value').then(function(snap3){
           var sess = snap3.val();
           if(sess) localStorage.setItem('ct_active_session', sess);
+
+          // Register trapper in Firebase so admin can see them in Assign tab
+          var trapKey = trapperName.replace(/[.#$[\]]/g,'_');
+          db.ref(getKey()+'/ct_trappers/'+trapKey).set({
+            name: trapperName,
+            checkedIn: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
+            assignedSquad: null,
+            assignedStation: null
+          });
+
+          // Listen for assignment from admin
+          db.ref(getKey()+'/ct_trappers/'+trapKey).on('value', function(snap){
+            var a = snap.val();
+            if(!a) return;
+            if(a.assignedStation !== null && a.assignedStation !== undefined){
+              trapStation = parseInt(a.assignedStation)||0;
+              var stSel = document.getElementById('tr-st');
+              if(stSel) stSel.value = String(trapStation);
+            }
+            if(a.assignedSquad !== null && a.assignedSquad !== undefined){
+              trapAssignedSquad = a.assignedSquad;
+            }
+            var trapScreen = document.getElementById('tr-screen-squads');
+            if(trapScreen && trapScreen.style.display !== 'none') buildSquadList();
+          });
+
           document.getElementById('app-wrap').style.display = 'block';
           setMode('trapper');
           // Listen for clear signal from admin
