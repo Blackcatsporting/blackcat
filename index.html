@@ -756,6 +756,22 @@ function connectAsTrapper(){
 
           document.getElementById('app-wrap').style.display = 'block';
           setMode('trapper');
+
+          // Monitor connection state
+          db.ref('.info/connected').on('value', function(snap){
+            var el = document.getElementById('tr-conn-status');
+            if(!el) return;
+            if(snap.val() === true){
+              el.textContent = '● LIVE';
+              el.style.background = '#0a2a0a';
+              el.style.color = '#4caf50';
+            } else {
+              el.textContent = '● OFFLINE — scores queued';
+              el.style.background = '#2a1a0a';
+              el.style.color = '#ff9800';
+            }
+          });
+
           // Listen for clear signal from admin
           db.ref(getKey()+'/ct_clear').on('value', function(snap){
             var clearTime = snap.val();
