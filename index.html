@@ -2407,8 +2407,10 @@ function trapSubmit() {
   // Check if entire squad is done at this station
   var squadDone = trapScoredCount >= (S.squads[trapSquadIdx] ? S.squads[trapSquadIdx].members.length : 1);
   if(squadDone){
-    // Squad finished — find next squad and show confirmation
+    // Squad finished — reset counts before showing next squad
     var currentLabel = S.squads[trapSquadIdx] ? String(S.squads[trapSquadIdx].label||S.squads[trapSquadIdx].num) : '1';
+    trapScoredCount = 0;
+    trapMemberIdx = 0;
     var nextLabel = getNextSquadInRotation(currentLabel);
     updateStationStatus(trapStation+1, currentLabel, [], 'waiting');
     if(nextLabel){
@@ -2880,21 +2882,22 @@ function confirmSquadAndScore(){
     return;
   }
 
-  // Remove overlay
-  var ov = document.getElementById('squad-confirm-overlay');
-  if(ov) ov.remove();
-
   // Update Firebase — now scoring
   updateStationStatus(trapStation+1, label, sq.members, 'scoring');
 
-  // Reset scoring state for new squad
+  // Remove overlay
+  var ov2 = document.getElementById('squad-confirm-overlay');
+  if(ov2) ov2.remove();
+
+  // Fully reset scoring state for fresh squad
+  trapSquadIdx = sqIdx;
   trapMemberIdx = 0;
   trapScoredCount = 0;
   trapAssignedSquad = label;
   window._pendingSquadIdx = undefined;
-  var squads2 = S.squads.length ? S.squads : JSON.parse(localStorage.getItem('ct_squads')||'[]');
-  var sqIdx = 0;
-  squads2.forEach(function(s,i){ if(String(s.label||s.num)===label) sqIdx=i; });
+  scoredSquadKeys[(label)+'_'+trapStation] = false;
+
+  // Show who shoots first
   startScoringSquad(sqIdx, true);
 }
 
