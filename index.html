@@ -2319,22 +2319,37 @@ function buildTrapperBirds() {
 
   var numsCol    = document.getElementById('tr-bird-nums');
   var resultsCol = document.getElementById('tr-bird-results');
-  numsCol.innerHTML = ''; resultsCol.innerHTML = '';
+
+  // Build as a single table so rows always align perfectly
+  var table = document.createElement('table');
+  table.style.cssText = 'width:100%;border-collapse:collapse;table-layout:fixed';
 
   trapBirds.forEach(function(val, j) {
-    var numDiv = document.createElement('div');
-    numDiv.style.cssText = 'font-family:DM Mono,monospace;font-size:14px;color:var(--dim);padding:6px 0;border-bottom:1px solid var(--bdr);text-align:center';
-    numDiv.textContent = j+1;
-    numsCol.appendChild(numDiv);
+    var row = document.createElement('tr');
 
-    var resDiv = document.createElement('div');
-    resDiv.style.cssText = 'font-family:Bebas Neue,sans-serif;font-size:20px;padding:4px 0;border-bottom:1px solid var(--bdr);text-align:center;cursor:pointer';
-    if (val===true)       { resDiv.textContent='X'; resDiv.style.color='var(--hit)'; }
-    else if (val===false) { resDiv.textContent='O'; resDiv.style.color='var(--miss)'; }
-    else                  { resDiv.textContent='—'; resDiv.style.color='var(--bdr)'; }
-    (function(idx){ resDiv.onclick = function(){ trapBirds[idx]=null; buildTrapperBirds(); }; })(j);
-    resultsCol.appendChild(resDiv);
+    var numCell = document.createElement('td');
+    numCell.style.cssText = 'width:44px;font-family:DM Mono,monospace;font-size:14px;color:var(--dim);padding:8px 4px;border-bottom:1px solid var(--bdr);text-align:center;vertical-align:middle';
+    numCell.textContent = j+1;
+
+    var resCell = document.createElement('td');
+    resCell.style.cssText = 'font-family:Bebas Neue,sans-serif;font-size:22px;padding:8px 4px;border-bottom:1px solid var(--bdr);text-align:center;vertical-align:middle;cursor:pointer';
+    if (val===true)       { resCell.textContent='X'; resCell.style.color='var(--hit)'; }
+    else if (val===false) { resCell.textContent='O'; resCell.style.color='var(--miss)'; }
+    else                  { resCell.textContent='—'; resCell.style.color='var(--bdr)'; }
+    (function(idx){ resCell.onclick = function(){ trapBirds[idx]=null; buildTrapperBirds(); }; })(j);
+
+    row.appendChild(numCell);
+    row.appendChild(resCell);
+    table.appendChild(row);
   });
+
+  // Replace both columns with unified table
+  var container = numsCol.parentNode;
+  numsCol.innerHTML = '';
+  resultsCol.innerHTML = '';
+  numsCol.style.cssText = 'display:none';
+  resultsCol.style.cssText = 'flex:1';
+  resultsCol.appendChild(table);
 
   var deadBtn = document.getElementById('tr-dead-btn');
   var lostBtn = document.getElementById('tr-lost-btn');
