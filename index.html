@@ -3923,6 +3923,9 @@ setInterval(function(){
       localStorage.setItem('ct_admin', JSON.stringify(arr));
       drawAdmin();
       drawRotationBoard();
+      // Refresh score and leader tabs if they are open
+      if(document.getElementById('pg-score') && document.getElementById('pg-score').classList.contains('on')) drawScore();
+      if(document.getElementById('pg-leader') && document.getElementById('pg-leader').classList.contains('on')) drawLeader();
     });
     fbListenActiveSession(function(sess){
       var prev = localStorage.getItem('ct_active_session')||'';
