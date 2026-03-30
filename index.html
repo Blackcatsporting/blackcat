@@ -2835,7 +2835,7 @@ function showSquadConfirmation(squadLabel, isFirst){
   overlay.style.cssText = 'position:fixed;inset:0;background:#0f0f07;z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box';
 
   var membersHtml = members.length
-    ? members.map(function(m){ return '<div style="font-family:DM Mono,monospace;font-size:13px;color:var(--txt);padding:6px 0;border-bottom:1px solid var(--bdr)">'+m+'</div>'; }).join('')
+    ? members.map(function(m){ return '<div style="font-family:DM Sans,sans-serif;font-size:18px;font-weight:600;color:var(--txt);padding:10px 4px;border-bottom:1px solid var(--bdr)">'+m+'</div>'; }).join('')
     : '<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim)">No members found</div>';
 
   overlay.innerHTML = '<div style="width:100%;max-width:400px">'
@@ -2885,12 +2885,14 @@ function confirmSquadAndScore(){
   // Update Firebase — now scoring
   updateStationStatus(trapStation+1, label, sq.members, 'scoring');
 
-  // Start scoring the confirmed squad
+  // Reset scoring state for new squad
+  trapMemberIdx = 0;
+  trapScoredCount = 0;
   trapAssignedSquad = label;
+  window._pendingSquadIdx = undefined;
   var squads2 = S.squads.length ? S.squads : JSON.parse(localStorage.getItem('ct_squads')||'[]');
   var sqIdx = 0;
   squads2.forEach(function(s,i){ if(String(s.label||s.num)===label) sqIdx=i; });
-  if(window._pendingSquadIdx !== undefined) sqIdx = window._pendingSquadIdx;
   startScoringSquad(sqIdx);
 }
 
