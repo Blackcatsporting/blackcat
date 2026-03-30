@@ -135,6 +135,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
   <div class="tab"     onclick="go('score')">Score</div>
   <div class="tab"     onclick="go('leader')">Leader</div>
   <div class="tab"     onclick="go('assign')">Assign</div>
+  <div class="tab"     onclick="go('board')">Board</div>
   <div class="tab"     onclick="go('admin')">Admin</div>
   <div class="tab"     onclick="go('scorecard')">Scorecard</div>
   <div class="tab"     onclick="go('history')">History</div>
@@ -395,6 +396,19 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
   </div>
   <div id="assign-body">
     <div class="empty"><div class="empty-icon">📡</div><div class="empty-txt">Waiting for trappers to check in</div></div>
+  </div>
+</div>
+
+<!-- BOARD -->
+<div id="pg-board" class="pg">
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div class="ctitle" style="margin:0">📋 Live Station Board</div>
+      <button class="btn btn-grey" onclick="drawBoard()" style="font-size:11px;padding:8px 14px">🔄 Refresh</button>
+    </div>
+    <div id="board-body">
+      <div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">Start a round to see live station status</div></div>
+    </div>
   </div>
 </div>
 
@@ -874,6 +888,7 @@ function go(name) {
   if(name==='score')     drawScore();
   if(name==='leader')    drawLeader();
   if(name==='assign')    drawAssign();
+  if(name==='board')     drawBoard();
   if(name==='admin')     drawAdmin();
   if(name==='scorecard') drawScorecardPage();
   if(name==='history')   drawHistory();
@@ -2029,7 +2044,11 @@ function buildSquadList() {
 
     btn.appendChild(lbl);
     btn.appendChild(names);
-    if(!isComplete) btn.onclick = (function(i){ return function(){ startScoringSquad(i); }; })(realIdx);
+    if(!isComplete) btn.onclick = (function(i, lbl, mems){ return function(){ 
+      showSquadConfirmation(lbl, false);
+      // When confirmed, startScoringSquad will be called
+      window._pendingSquadIdx = i;
+    }; })(realIdx, sq.label||sq.num, sq.members);
     el.appendChild(btn);
   });
 }
@@ -2382,7 +2401,22 @@ function trapSubmit() {
 
   trapMemberIdx++;
   trapScoredCount++;
-  scoreCurrentMember();
+
+  // Check if entire squad is done at this station
+  var squadDone = trapScoredCount >= (S.squads[trapSquadIdx] ? S.squads[trapSquadIdx].members.length : 1);
+  if(squadDone){
+    // Squad finished — find next squad and show confirmation
+    var currentLabel = S.squads[trapSquadIdx] ? String(S.squads[trapSquadIdx].label||S.squads[trapSquadIdx].num) : '1';
+    var nextLabel = getNextSquadInRotation(currentLabel);
+    updateStationStatus(trapStation+1, currentLabel, [], 'waiting');
+    if(nextLabel){
+      showSquadConfirmation(nextLabel, false);
+    } else {
+      markStationComplete();
+    }
+  } else {
+    scoreCurrentMember();
+  }
 }
 
 function getScore(name){
@@ -2776,6 +2810,179 @@ function setActiveSession(sess){
     scoredSquadKeys = {};
     buildSquadList();
   }
+}
+
+function updateStationStatus(station, squad, members, status){
+  if(!db) return;
+  var key = localStorage.getItem('ct_event_key')||'DEFAULT';
+  db.ref(key+'/ct_station_status/'+station).set({
+    trapper: trapperName||'Unknown',
+    currentSquad: squad,
+    members: members||[],
+    status: status,
+    updated: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
+  });
+}
+
+function showSquadConfirmation(squadLabel, isFirst){
+  // Find squad members
+  var squads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
+  var sq = squads.find(function(s){ return String(s.label||s.num)===String(squadLabel); });
+  var members = sq ? sq.members : [];
+
+  var overlay = document.createElement('div');
+  overlay.id = 'squad-confirm-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:#0f0f07;z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box';
+
+  var membersHtml = members.length
+    ? members.map(function(m){ return '<div style="font-family:DM Mono,monospace;font-size:13px;color:var(--txt);padding:6px 0;border-bottom:1px solid var(--bdr)">'+m+'</div>'; }).join('')
+    : '<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim)">No members found</div>';
+
+  overlay.innerHTML = '<div style="width:100%;max-width:400px">'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:13px;color:var(--dim);letter-spacing:3px;text-align:center;margin-bottom:4px">'+(isFirst?'STARTING SQUAD':'NEXT SQUAD')+'</div>'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:48px;color:var(--gold);letter-spacing:4px;text-align:center;margin-bottom:4px">SQUAD '+squadLabel+'</div>'
+    +'<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:2px;text-align:center;margin-bottom:16px">STATION '+(trapStation+1)+'</div>'
+    +'<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:14px;margin-bottom:16px">'+membersHtml+'</div>'
+    +'<div style="display:flex;gap:10px;margin-bottom:10px">'
+    +'<input id="sq-confirm-inp" class="inp" type="text" value="'+squadLabel+'" style="flex:1;font-size:24px;text-align:center;letter-spacing:2px" placeholder="Squad #">'
+    +'</div>'
+    +'<button onclick="confirmSquadAndScore()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:28px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:10px">▶ START SCORING</button>'
+    +'<button onclick="markStationComplete()" style="display:block;width:100%;padding:12px;background:none;border:1px solid var(--bdr);border-radius:10px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);cursor:pointer;letter-spacing:1px">✓ NO MORE SQUADS — STATION COMPLETE</button>'
+    +'</div>';
+
+  document.body.appendChild(overlay);
+
+  // Update squad members when input changes
+  document.getElementById('sq-confirm-inp').addEventListener('input', function(){
+    var newLabel = this.value.trim().toUpperCase();
+    var sq2 = squads.find(function(s){ return String(s.label||s.num)===newLabel; });
+    var mem2 = sq2 ? sq2.members : [];
+    updateStationStatus(trapStation+1, newLabel, mem2, 'waiting');
+  });
+
+  // Update Firebase with waiting status
+  updateStationStatus(trapStation+1, squadLabel, members, 'waiting');
+}
+
+function confirmSquadAndScore(){
+  var inp = document.getElementById('sq-confirm-inp');
+  var label = inp ? inp.value.trim().toUpperCase() : '';
+  if(!label){ toast('Enter squad number'); return; }
+
+  // Find squad
+  var squads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
+  var sq = squads.find(function(s){ return String(s.label||s.num)===label; });
+
+  if(!sq){
+    toast('Squad '+label+' not found — check number', '');
+    return;
+  }
+
+  // Remove overlay
+  var ov = document.getElementById('squad-confirm-overlay');
+  if(ov) ov.remove();
+
+  // Update Firebase — now scoring
+  updateStationStatus(trapStation+1, label, sq.members, 'scoring');
+
+  // Start scoring the confirmed squad
+  trapAssignedSquad = label;
+  var squads2 = S.squads.length ? S.squads : JSON.parse(localStorage.getItem('ct_squads')||'[]');
+  var sqIdx = 0;
+  squads2.forEach(function(s,i){ if(String(s.label||s.num)===label) sqIdx=i; });
+  if(window._pendingSquadIdx !== undefined) sqIdx = window._pendingSquadIdx;
+  startScoringSquad(sqIdx);
+}
+
+function markStationComplete(){
+  var ov = document.getElementById('squad-confirm-overlay');
+  if(ov) ov.remove();
+  updateStationStatus(trapStation+1, null, [], 'complete');
+  toast('Station '+(trapStation+1)+' marked complete', 'green');
+  buildSquadList();
+}
+
+function getNextSquadInRotation(currentLabel){
+  var squads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
+  if(!squads.length) return null;
+
+  // Find current squad index
+  var idx = -1;
+  squads.forEach(function(sq, i){
+    if(String(sq.label||sq.num)===String(currentLabel)) idx = i;
+  });
+  if(idx === -1) return null;
+
+  // Check which squads have been scored at this station
+  var log = JSON.parse(localStorage.getItem('ct_admin')||'[]');
+  var scoredAtStation = {};
+  log.forEach(function(r){
+    if(r.station === trapStation) scoredAtStation[r.shooter] = true;
+  });
+
+  // Find next unscored squad going backwards in rotation
+  var total = squads.length;
+  for(var i=1;i<total;i++){
+    var nextIdx = (idx - i + total) % total;
+    var nextSq = squads[nextIdx];
+    // Check if any member of this squad has been scored at this station
+    var allScored = nextSq.members.every(function(m){ return scoredAtStation[m.trim()]; });
+    if(!allScored) return String(nextSq.label||nextSq.num);
+  }
+  return null;
+}
+
+function drawBoard(){
+  var el = document.getElementById('board-body');
+  if(!db){ el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-txt">Firebase not connected</div></div>'; return; }
+
+  var key = localStorage.getItem('ct_event_key')||'DEFAULT';
+  db.ref(key+'/ct_station_status').once('value').then(function(snap){
+    var status = snap.val() || {};
+    var stations = S.started ? S.stations : parseInt(document.getElementById('ev-st').value)||17;
+
+    if(!Object.keys(status).length && !S.started){
+      el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">No station data yet.<br>Trappers must check in and confirm their squad.</div></div>';
+      return;
+    }
+
+    var html = '<table style="width:100%;border-collapse:collapse">';
+    html += '<tr style="background:var(--surf2)">'
+      +'<th style="padding:10px 8px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px;text-align:left;border-bottom:2px solid var(--bdr)">STATION</th>'
+      +'<th style="padding:10px 8px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px;text-align:left;border-bottom:2px solid var(--bdr)">TRAPPER</th>'
+      +'<th style="padding:10px 8px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px;text-align:left;border-bottom:2px solid var(--bdr)">CURRENT SQUAD</th>'
+      +'<th style="padding:10px 8px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px;text-align:left;border-bottom:2px solid var(--bdr)">STATUS</th>'
+      +'</tr>';
+
+    // Show all stations plus any extras from status
+    var allStations = new Set();
+    for(var i=1;i<=stations;i++) allStations.add(String(i));
+    Object.keys(status).forEach(function(k){ allStations.add(k); });
+    var stArr = Array.from(allStations).sort(function(a,b){ return parseInt(a)-parseInt(b); });
+
+    stArr.forEach(function(st){
+      var s = status[st] || {};
+      var statusColor = s.status==='scoring' ? 'var(--hit)' : s.status==='waiting' ? 'var(--org)' : s.status==='complete' ? 'var(--dim)' : 'var(--bdr)';
+      var statusText = s.status==='scoring' ? '🟢 SCORING' : s.status==='waiting' ? '🟡 WAITING' : s.status==='complete' ? '✓ DONE' : '— EMPTY';
+      var squadInfo = s.currentSquad ? 'Squad '+s.currentSquad : '—';
+      if(s.members && s.members.length){
+        squadInfo += '<br><span style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim)">'+s.members.slice(0,3).join(', ')+(s.members.length>3?' +'+( s.members.length-3)+' more':'')+'</span>';
+      }
+      html += '<tr style="border-bottom:1px solid var(--bdr)">'
+        +'<td style="padding:12px 8px;font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--gold)">'+st+'</td>'
+        +'<td style="padding:12px 8px;font-family:DM Mono,monospace;font-size:12px;color:var(--txt)">'+(s.trapper||'—')+'</td>'
+        +'<td style="padding:12px 8px;font-size:13px;color:var(--txt)">'+squadInfo+'</td>'
+        +'<td style="padding:12px 8px;font-family:DM Mono,monospace;font-size:11px;color:'+statusColor+'">'+statusText+'</td>'
+        +'</tr>';
+    });
+    html += '</table>';
+    el.innerHTML = html;
+
+    // Live listener
+    db.ref(key+'/ct_station_status').on('value', function(snap2){
+      if(document.getElementById('pg-board').classList.contains('on')) drawBoard();
+    });
+  });
 }
 
 function drawAssign(){
