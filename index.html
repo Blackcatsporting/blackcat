@@ -2409,6 +2409,9 @@ function trapSubmit() {
   var squadDone = trapScoredCount >= (S.squads[trapSquadIdx] ? S.squads[trapSquadIdx].members.length : 1);
   if(squadDone){
     var currentLabel = S.squads[trapSquadIdx] ? String(S.squads[trapSquadIdx].label||S.squads[trapSquadIdx].num) : '1';
+    // Mark squad as scored so it disappears from the list
+    var sqKey = currentLabel + '_' + trapStation;
+    scoredSquadKeys[sqKey] = true;
     trapScoredCount = 0;
     trapMemberIdx = 0;
     updateStationStatus(trapStation+1, currentLabel, [], 'waiting');
