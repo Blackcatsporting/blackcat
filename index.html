@@ -2945,36 +2945,73 @@ function initBoardListener(){
 function renderBoard(status){
   var el = document.getElementById('board-body');
   if(!el) return;
-  var stations = S.started ? S.stations : parseInt(document.getElementById('ev-st').value)||17;
 
-  var allSt = new Set();
-  for(var i=1;i<=stations;i++) allSt.add(String(i));
-  Object.keys(status).forEach(function(k){ allSt.add(k); });
-  var stArr = Array.from(allSt).sort(function(a,b){ return parseInt(a)-parseInt(b); });
+  // Build squad-centric view from station status
+  var squadMap = {};
+  Object.keys(status).forEach(function(station){
+    var s = status[station];
+    if(s && s.currentSquad){
+      var sq = String(s.currentSquad);
+      if(!squadMap[sq] || s.status === 'scoring'){
+        squadMap[sq] = {
+          station: station,
+          members: s.members||[],
+          trapper: s.trapper||'—',
+          status: s.status||'waiting',
+          updated: s.updated||''
+        };
+      }
+    }
+  });
+
+  // Also add squads from the squad list that haven't appeared yet
+  var allSquads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
+
+  if(!allSquads.length && !Object.keys(squadMap).length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">No data yet. Trappers must check in and start scoring.</div></div>';
+    return;
+  }
 
   var html = '<table style="width:100%;border-collapse:collapse">';
   html += '<tr style="background:var(--surf2)">'
-    +'<th style="padding:10px 8px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px;text-align:left;border-bottom:2px solid var(--bdr)">STATION</th>'
-    +'<th style="padding:10px 8px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px;text-align:left;border-bottom:2px solid var(--bdr)">TRAPPER</th>'
     +'<th style="padding:10px 8px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px;text-align:left;border-bottom:2px solid var(--bdr)">SQUAD</th>'
+    +'<th style="padding:10px 8px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px;text-align:left;border-bottom:2px solid var(--bdr)">MEMBERS</th>'
+    +'<th style="padding:10px 8px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px;text-align:left;border-bottom:2px solid var(--bdr)">STATION</th>'
     +'<th style="padding:10px 8px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px;text-align:left;border-bottom:2px solid var(--bdr)">STATUS</th>'
     +'</tr>';
 
-  stArr.forEach(function(st){
-    var s = status[st]||{};
-    var statusColor = s.status==='scoring'?'var(--hit)':s.status==='waiting'?'var(--org)':s.status==='complete'?'var(--dim)':'var(--bdr)';
-    var statusText = s.status==='scoring'?'🟢 SCORING':s.status==='waiting'?'🟡 WAITING':s.status==='complete'?'✓ DONE':'— EMPTY';
-    var squadInfo = s.currentSquad ? 'Squad '+s.currentSquad : '—';
-    if(s.members && s.members.length){
-      squadInfo += '<br><span style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim)">'+s.members.join(', ')+'</span>';
-    }
+  // Sort squads numerically
+  var sortedSquads = allSquads.slice().sort(function(a,b){ return (parseInt(a.label||a.num)||0)-(parseInt(b.label||b.num)||0); });
+
+  sortedSquads.forEach(function(sq){
+    var label = String(sq.label||sq.num);
+    var info = squadMap[label] || {};
+    var statusColor = info.status==='scoring'?'var(--hit)':info.status==='waiting'?'var(--org)':info.status==='complete'?'var(--dim)':'var(--bdr)';
+    var statusText = info.status==='scoring'?'🟢 SCORING':info.status==='waiting'?'🟡 WAITING':info.status==='complete'?'✓ DONE':'— NOT STARTED';
+    var members = info.members && info.members.length ? info.members : sq.members||[];
     html += '<tr style="border-bottom:1px solid var(--bdr)">'
-      +'<td style="padding:12px 8px;font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--gold)">'+st+'</td>'
-      +'<td style="padding:12px 8px;font-family:DM Mono,monospace;font-size:12px;color:var(--txt)">'+(s.trapper||'—')+'</td>'
-      +'<td style="padding:12px 8px;font-size:13px;color:var(--txt)">'+squadInfo+'</td>'
+      +'<td style="padding:12px 8px;font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--gold)">'+label+'</td>'
+      +'<td style="padding:12px 8px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim)">'+members.join(', ')+'</td>'
+      +'<td style="padding:12px 8px;font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--txt)">'+(info.station?'Station '+info.station:'—')+'</td>'
       +'<td style="padding:12px 8px;font-family:DM Mono,monospace;font-size:11px;color:'+statusColor+'">'+statusText+'</td>'
       +'</tr>';
   });
+
+  // Add any squads in status not in the squad list
+  Object.keys(squadMap).forEach(function(sq){
+    if(!sortedSquads.find(function(s){ return String(s.label||s.num)===sq; })){
+      var info = squadMap[sq];
+      var statusColor = info.status==='scoring'?'var(--hit)':info.status==='waiting'?'var(--org)':'var(--bdr)';
+      var statusText = info.status==='scoring'?'🟢 SCORING':info.status==='waiting'?'🟡 WAITING':'— UNKNOWN';
+      html += '<tr style="border-bottom:1px solid var(--bdr)">'
+        +'<td style="padding:12px 8px;font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--gold)">'+sq+'</td>'
+        +'<td style="padding:12px 8px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim)">'+info.members.join(', ')+'</td>'
+        +'<td style="padding:12px 8px;font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--txt)">Station '+info.station+'</td>'
+        +'<td style="padding:12px 8px;font-family:DM Mono,monospace;font-size:11px;color:'+statusColor+'">'+statusText+'</td>'
+        +'</tr>';
+    }
+  });
+
   html += '</table>';
   el.innerHTML = html;
 }
