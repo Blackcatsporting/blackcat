@@ -2104,6 +2104,9 @@ function startScoringSquad(squadIdx, keepStation) {
     if(stSel) stSel.value = String(trapStation);
   }
 
+  // Update Firebase — trapper is at this station with this squad
+  updateStationStatus(trapStation+1, squad.label||squad.num, squad.members, 'waiting');
+
   var el = document.getElementById('tr-squad-list');
   el.innerHTML = '';
 
@@ -2125,6 +2128,8 @@ function startScoringSquad(squadIdx, keepStation) {
     btn.onclick = (function(startIdx){ return function(){
       trapMemberIdx  = startIdx;
       trapScoredCount = 0;
+      // Update station status to scoring
+      updateStationStatus(trapStation+1, squad.label||squad.num, squad.members, 'scoring');
       scoreCurrentMember();
     }; })(mi);
     el.appendChild(btn);
@@ -2972,7 +2977,7 @@ function drawBoard(){
       var statusText = s.status==='scoring' ? '🟢 SCORING' : s.status==='waiting' ? '🟡 WAITING' : s.status==='complete' ? '✓ DONE' : '— EMPTY';
       var squadInfo = s.currentSquad ? 'Squad '+s.currentSquad : '—';
       if(s.members && s.members.length){
-        squadInfo += '<br><span style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim)">'+s.members.slice(0,3).join(', ')+(s.members.length>3?' +'+( s.members.length-3)+' more':'')+'</span>';
+        squadInfo += '<br><span style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim)">'+s.members.join(', ')+'</span>';
       }
       html += '<tr style="border-bottom:1px solid var(--bdr)">'
         +'<td style="padding:12px 8px;font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--gold)">'+st+'</td>'
