@@ -1448,7 +1448,7 @@ function startRound(){
   var codeVal = document.getElementById('event-code-value');
   if(codeDisp) codeDisp.style.display='block';
   if(codeVal) codeVal.textContent = key;
-  toast('Round started!','green'); go('squads');
+  toast('Round started!','green'); window._boardListenerActive=false; initBoardListener(); go('squads');
 }
 
 function addLateEntry(){
@@ -2932,10 +2932,58 @@ function getNextSquadInRotation(currentLabel){
   return null;
 }
 
+function initBoardListener(){
+  if(window._boardListenerActive) return;
+  window._boardListenerActive = true;
+  if(!db) return;
+  var key = localStorage.getItem('ct_event_key')||'DEFAULT';
+  db.ref(key+'/ct_station_status').on('value', function(snap){
+    renderBoard(snap.val()||{});
+  });
+}
+
+function renderBoard(status){
+  var el = document.getElementById('board-body');
+  if(!el) return;
+  var stations = S.started ? S.stations : parseInt(document.getElementById('ev-st').value)||17;
+
+  var allSt = new Set();
+  for(var i=1;i<=stations;i++) allSt.add(String(i));
+  Object.keys(status).forEach(function(k){ allSt.add(k); });
+  var stArr = Array.from(allSt).sort(function(a,b){ return parseInt(a)-parseInt(b); });
+
+  var html = '<table style="width:100%;border-collapse:collapse">';
+  html += '<tr style="background:var(--surf2)">'
+    +'<th style="padding:10px 8px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px;text-align:left;border-bottom:2px solid var(--bdr)">STATION</th>'
+    +'<th style="padding:10px 8px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px;text-align:left;border-bottom:2px solid var(--bdr)">TRAPPER</th>'
+    +'<th style="padding:10px 8px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px;text-align:left;border-bottom:2px solid var(--bdr)">SQUAD</th>'
+    +'<th style="padding:10px 8px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px;text-align:left;border-bottom:2px solid var(--bdr)">STATUS</th>'
+    +'</tr>';
+
+  stArr.forEach(function(st){
+    var s = status[st]||{};
+    var statusColor = s.status==='scoring'?'var(--hit)':s.status==='waiting'?'var(--org)':s.status==='complete'?'var(--dim)':'var(--bdr)';
+    var statusText = s.status==='scoring'?'🟢 SCORING':s.status==='waiting'?'🟡 WAITING':s.status==='complete'?'✓ DONE':'— EMPTY';
+    var squadInfo = s.currentSquad ? 'Squad '+s.currentSquad : '—';
+    if(s.members && s.members.length){
+      squadInfo += '<br><span style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim)">'+s.members.join(', ')+'</span>';
+    }
+    html += '<tr style="border-bottom:1px solid var(--bdr)">'
+      +'<td style="padding:12px 8px;font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--gold)">'+st+'</td>'
+      +'<td style="padding:12px 8px;font-family:DM Mono,monospace;font-size:12px;color:var(--txt)">'+(s.trapper||'—')+'</td>'
+      +'<td style="padding:12px 8px;font-size:13px;color:var(--txt)">'+squadInfo+'</td>'
+      +'<td style="padding:12px 8px;font-family:DM Mono,monospace;font-size:11px;color:'+statusColor+'">'+statusText+'</td>'
+      +'</tr>';
+  });
+  html += '</table>';
+  el.innerHTML = html;
+}
+
 function drawBoard(){
   var el = document.getElementById('board-body');
   if(!db){ el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-txt">Firebase not connected</div></div>'; return; }
-
+  initBoardListener();
+  el.innerHTML='<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);text-align:center;padding:20px">Loading...</div>';
   var key = localStorage.getItem('ct_event_key')||'DEFAULT';
   db.ref(key+'/ct_station_status').once('value').then(function(snap){
     var status = snap.val() || {};
