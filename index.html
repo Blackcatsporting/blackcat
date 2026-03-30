@@ -1979,10 +1979,14 @@ function buildSquadList() {
   }
 
   filtered.sort(function(a,b){
-    var an = a.num >= stationNum ? a.num : a.num + 100;
-    var bn = b.num >= stationNum ? b.num : b.num + 100;
-    if(an !== bn) return an - bn;
-    return (a.label||'').localeCompare(b.label||'');
+    var total = S.squads.length || filtered.length;
+    // Squads arrive in descending order wrapping around
+    // Station N starts with Squad N, then N-1, N-2... wrapping to total, total-1... N+1
+    function rotPos(num){
+      var pos = (stationNum - num + total) % total;
+      return pos;
+    }
+    return rotPos(a.num) - rotPos(b.num);
   });
 
   var log = JSON.parse(localStorage.getItem('ct_admin')||'[]');
