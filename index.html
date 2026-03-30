@@ -2088,29 +2088,7 @@ function startScoringSquad(squadIdx, keepStation) {
   var squads   = S.squads.length ? S.squads : [{num:1, label:'1', members:S.shooters}];
   var squad    = squads[squadIdx];
 
-  if(!keepStation){
-    var squadNum = parseInt(squad.label) || squad.num || 1;
-    var baseStation = (squadNum - 1) % S.stations;
-
-    var log = JSON.parse(localStorage.getItem('ct_admin')||'[]');
-    var stationCounts = {};
-    log.forEach(function(r){
-      var rName = r.shooter.trim().toLowerCase();
-      if(squad.members.some(function(m){ return m.trim().toLowerCase() === rName; })){
-        if(!stationCounts[r.station]) stationCounts[r.station] = 0;
-        stationCounts[r.station]++;
-      }
-    });
-    var stationsCompleted = 0;
-    Object.keys(stationCounts).forEach(function(st){
-      if(stationCounts[st] >= squad.members.length) stationsCompleted++;
-    });
-
-    trapStation = (baseStation + stationsCompleted) % S.stations;
-
-    var stSel = document.getElementById('tr-st');
-    if(stSel) stSel.value = String(trapStation);
-  }
+  // Never override trapStation — trapper selected their station, keep it
 
   // Update Firebase — trapper is at this station with this squad
   updateStationStatus(trapStation+1, squad.label||squad.num, squad.members, 'waiting');
