@@ -783,6 +783,12 @@ function connectAsTrapper(){
             if(a.assignedSquad !== null && a.assignedSquad !== undefined){
               trapAssignedSquad = a.assignedSquad;
             }
+            // Update board with assignment
+            if(a.assignedSquad && a.assignedStation !== null){
+              var squads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
+              var sq = squads.find(function(s){ return String(s.label||s.num)===String(a.assignedSquad); });
+              updateStationStatus(parseInt(a.assignedStation)+1, a.assignedSquad, sq?sq.members:[], 'waiting');
+            }
             var trapScreen = document.getElementById('tr-screen-squads');
             if(trapScreen && trapScreen.style.display !== 'none') buildSquadList();
           });
