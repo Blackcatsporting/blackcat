@@ -3221,7 +3221,16 @@ function renderBoardTable(status, log, totalStations){
     return done;
   }
 
-  if(!allSquads.length && !Object.keys(squadLoc).length){
+  // Build station-trapper map (stations with trappers but no squad yet)
+  var stationTrappers = {};
+  Object.keys(status).forEach(function(station){
+    var s = status[station];
+    if(s && s.trapper && !s.currentSquad){
+      stationTrappers[station] = s.trapper;
+    }
+  });
+
+  if(!allSquads.length && !Object.keys(squadLoc).length && !Object.keys(stationTrappers).length){
     el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">No data yet. Start a round and have trappers check in.</div></div>';
     return;
   }
@@ -3256,6 +3265,28 @@ function renderBoardTable(status, log, totalStations){
       +'</tr>';
   });
   html += '</tbody></table></div>';
+
+  // Show stations with trappers waiting but no squad assigned yet
+  if(Object.keys(stationTrappers).length){
+    html += '<div style="margin-top:16px">'
+      +'<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:2px;margin-bottom:8px">STATIONS READY</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:13px">'
+      +'<thead><tr style="background:var(--surf2)">'
+      +'<th style="padding:8px 6px;text-align:left;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:10px;width:80px;letter-spacing:1px">STATION</th>'
+      +'<th style="padding:8px 6px;text-align:left;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:10px;letter-spacing:1px">TRAPPER</th>'
+      +'<th style="padding:8px 6px;text-align:left;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:10px;width:100px;letter-spacing:1px">STATUS</th>'
+      +'</tr></thead><tbody>';
+    var stNums = Object.keys(stationTrappers).sort(function(a,b){ return parseInt(a)-parseInt(b); });
+    stNums.forEach(function(st){
+      html += '<tr style="border-bottom:0.5px solid var(--bdr)">'
+        +'<td style="padding:8px 6px;font-family:Bebas Neue,sans-serif;font-size:18px;color:var(--gold)">'+st+'</td>'
+        +'<td style="padding:8px 6px;font-size:11px;color:var(--txt)">'+stationTrappers[st]+'</td>'
+        +'<td style="padding:8px 6px;font-size:10px;color:var(--hit)">&#9679; READY</td>'
+        +'</tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+
   el.innerHTML = html;
 }
 
