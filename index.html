@@ -3054,17 +3054,21 @@ function drawBoard(){
     });
 
     function stDone(squad){
-      var mems = squad.members||[];
+      var mems = (squad.members||[]).map(function(m){ return m.trim().toLowerCase(); });
+      if(!mems.length) return 0;
       var stCounts = {};
       log.forEach(function(r){
-        var k = r.shooter.trim().toLowerCase();
-        if(mems.some(function(m){ return m.trim().toLowerCase()===k; })){
-          if(!stCounts[r.station]) stCounts[r.station]=0;
-          stCounts[r.station]++;
+        var k = r.shooter ? r.shooter.trim().toLowerCase() : '';
+        if(mems.indexOf(k) !== -1){
+          var st = String(r.station);
+          if(!stCounts[st]) stCounts[st] = {};
+          stCounts[st][k] = true;
         }
       });
-      var done=0;
-      Object.keys(stCounts).forEach(function(st){ if(stCounts[st]>=mems.length) done++; });
+      var done = 0;
+      Object.keys(stCounts).forEach(function(st){
+        if(Object.keys(stCounts[st]).length >= mems.length) done++;
+      });
       return done;
     }
 
