@@ -2431,6 +2431,7 @@ function trapSubmit() {
     trapScoredCount = 0;
     trapMemberIdx = 0;
     updateStationStatus(trapStation+1, currentLabel, [], 'waiting');
+    scoreCurrentMember();
   } else {
     scoreCurrentMember();
   }
