@@ -2195,6 +2195,7 @@ function scoreCurrentMember() {
 
     trShow('squads');
     if(trapAssignedSquad !== null && trapAssignedSquad !== undefined && trapAssignedSquad !== ''){
+      toast('Assigned: '+trapAssignedSquad, 'green');
       // Assigned trapper — show station complete with next station button
       var nextStation = (trapStation + 1) % S.stations;
       var el2 = document.getElementById('tr-squad-list');
