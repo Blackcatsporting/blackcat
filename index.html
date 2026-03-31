@@ -3089,8 +3089,8 @@ function drawBoard(){
       var label = String(sq.label||sq.num);
       var info = squadLocation[label]||{};
       var done = stationsDone(sq);
-      var statusColor = info.status==='scoring'?'var(--hit)':info.status==='waiting'?'var(--org)':done>=totalStations?'var(--dim)':'var(--bdr)';
-      var statusText = info.status==='scoring'?'🟢 SCORING':info.status==='waiting'?'🟡 WAITING':done>=totalStations?'✓ COMPLETE':'— NOT STARTED';
+      var statusColor = done>=totalStations?'var(--dim)':info.status==='scoring'?'var(--hit)':info.status==='waiting'?'var(--org)':'var(--bdr)';
+      var statusText = done>=totalStations?'✓ COMPLETE':info.status==='scoring'?'🟢 SCORING':info.status==='waiting'?'🟡 WAITING':'— NOT STARTED';
       var members = sq.members||[];
       var doneColor = done>=totalStations?'var(--hit)':done>0?'var(--org)':'var(--dim)';
       html += '<tr style="border-bottom:1px solid var(--bdr)">'
@@ -3169,8 +3169,8 @@ function drawBoard(){
       var info = squadLoc[label]||{};
       var done = stDone(sq);
       var complete = done >= totalSt;
-      var statusColor = info.status==='scoring'?'var(--hit)':info.status==='waiting'?'var(--org)':complete?'var(--dim)':'var(--bdr)';
-      var statusText = info.status==='scoring'?'&#9679; SCORING':info.status==='waiting'?'&#9679; WAITING':complete?'&#10003; COMPLETE':'&#8212; NOT STARTED';
+      var statusColor = (done>=totalStations||complete)?'var(--dim)':info.status==='scoring'?'var(--hit)':info.status==='waiting'?'var(--org)':'var(--bdr)';
+      var statusText = (done>=totalStations||complete)?'&#10003; COMPLETE':info.status==='scoring'?'&#9679; SCORING':info.status==='waiting'?'&#9679; WAITING':'&#8212; NOT STARTED';
       var doneColor = complete?'var(--hit)':done>0?'var(--org)':'var(--dim)';
       var members = sq.members||[];
       html += '<tr style="border-bottom:0.5px solid var(--bdr)">'
