@@ -2100,6 +2100,8 @@ function moveToNextStation(){
   scoredSquadKeys = {};
   var stSel = document.getElementById('tr-st');
   if(stSel) stSel.value = String(trapStation);
+  // Update board with new station
+  if(trapAssignedSquad) updateStationStatus(trapStation+1, trapAssignedSquad, [], 'waiting');
   updateArrivalNote();
   buildSquadList();
 }
