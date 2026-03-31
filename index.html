@@ -808,7 +808,7 @@ function connectAsTrapper(){
           // Listen for clear signal from admin
           db.ref(getKey()+'/ct_clear').on('value', function(snap){
             var clearTime = snap.val();
-            if(clearTime && clearTime > Date.now() - 5000){
+            if(clearTime && clearTime > Date.now() - 30000){
               // Admin cleared event — reset trapper
               localStorage.removeItem('ct_squads');
               localStorage.removeItem('ct_active_session');
@@ -1346,18 +1346,20 @@ function newEvent(){
   adminLog=[];
   localStorage.setItem('ct_admin','[]');
   if(db){
-    db.ref(getKey()+'/ct_admin').set(null);
-    db.ref(getKey()+'/ct_squads').set(null);
-    db.ref(getKey()+'/ct_event_state').set(null);
-    db.ref(getKey()+'/ct_trappers').set(null);
-    db.ref(getKey()+'/ct_active_session').set('');
-    db.ref(getKey()+'/ct_squads').set([]);
-    db.ref(getKey()+'/ct_event_state').set(null);
-    db.ref(getKey()+'/ct_trappers').set(null);
-    db.ref(getKey()+'/ct_active_session').set('');
+    var oldKey = getKey();
+    // Push clear signal to all trapper devices
+    db.ref(oldKey+'/ct_clear').set(Date.now());
+    db.ref(oldKey+'/ct_admin').set(null);
+    db.ref(oldKey+'/ct_squads').set(null);
+    db.ref(oldKey+'/ct_event_state').set(null);
+    db.ref(oldKey+'/ct_trappers').set(null);
+    db.ref(oldKey+'/ct_active_session').set('');
+    db.ref(oldKey+'/ct_station_status').set(null);
   }
 
   localStorage.removeItem('ct_squads');
+  localStorage.removeItem('ct_event_key');
+  localStorage.removeItem('ct_active_session');
   localStorage.setItem('ct_active_session','');
 
   trapStation = 0;
