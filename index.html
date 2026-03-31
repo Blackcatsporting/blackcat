@@ -2194,8 +2194,19 @@ function scoreCurrentMember() {
     }
 
     trShow('squads');
-    buildSquadList();
-    toast('Squad ' + (squad.label||squad.num) + ' complete!', 'green');
+    if(trapAssignedSquad !== null && trapAssignedSquad !== undefined && trapAssignedSquad !== ''){
+      // Assigned trapper — show station complete with next station button
+      var nextStation = (trapStation + 1) % S.stations;
+      var el2 = document.getElementById('tr-squad-list');
+      el2.innerHTML = '<div style="text-align:center;padding:40px 20px">'
+        +'<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:10px">&#10003; STATION '+(trapStation+1)+' COMPLETE</div>'
+        +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);margin-bottom:20px">Squad '+(squad.label||squad.num)+' scored</div>'
+        +'<button onclick="moveToNextStation()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; Move to Station '+(nextStation+1)+'</button>'
+        +'</div>';
+    } else {
+      buildSquadList();
+      toast('Squad ' + (squad.label||squad.num) + ' complete!', 'green');
+    }
     return;
   }
 
@@ -2419,17 +2430,6 @@ function trapSubmit() {
     trapScoredCount = 0;
     trapMemberIdx = 0;
     updateStationStatus(trapStation+1, currentLabel, [], 'waiting');
-
-    // Show simple Squad Complete screen
-    var el = document.getElementById('tr-squad-list');
-    el.innerHTML = '<div style="text-align:center;padding:40px 20px">'
-      +'<div style="font-family:Bebas Neue,sans-serif;font-size:48px;color:var(--hit);letter-spacing:3px;margin-bottom:8px">✓ SQUAD '+currentLabel+'</div>'
-      +'<div style="font-family:DM Mono,monospace;font-size:13px;color:var(--dim);letter-spacing:2px;margin-bottom:40px">STATION '+(trapStation+1)+' — COMPLETE</div>'
-      +'<button onclick="advanceToNextStation()" style="display:block;width:100%;padding:22px;background:var(--org);border:none;border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:32px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:14px">NEXT STATION →</button>'
-      +'<button onclick="markStationComplete()" style="display:block;width:100%;padding:14px;background:none;border:1px solid var(--bdr);border-radius:10px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);cursor:pointer;letter-spacing:1px">✓ ALL STATIONS DONE</button>'
-      +'<button onclick="switchToTrapper()" style="display:block;width:100%;padding:12px;background:none;border:none;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);cursor:pointer;letter-spacing:1px;margin-top:10px">↩ SIGN OUT</button>'
-      +'</div>';
-    trShow('squads');
   } else {
     scoreCurrentMember();
   }
