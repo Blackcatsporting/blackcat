@@ -806,6 +806,18 @@ function connectAsTrapper(){
           });
 
           // Listen for clear signal from admin
+          // Listen on global clear path — fires regardless of event key
+          db.ref('ct_global_clear').on('value', function(snap){
+            var clearTime = snap.val();
+            if(clearTime && clearTime > Date.now() - 30000){
+              localStorage.removeItem('ct_squads');
+              localStorage.removeItem('ct_active_session');
+              localStorage.removeItem('ct_event_key');
+              S.started = false; S.squads = []; S.shooters = [];
+              toast('New event started by admin', '');
+              setTimeout(function(){ location.reload(); }, 1500);
+            }
+          });
           db.ref(getKey()+'/ct_clear').on('value', function(snap){
             var clearTime = snap.val();
             if(clearTime && clearTime > Date.now() - 30000){
@@ -1347,7 +1359,8 @@ function newEvent(){
   localStorage.setItem('ct_admin','[]');
   if(db){
     var oldKey = getKey();
-    // Push clear signal to all trapper devices
+    // Push clear signal to GLOBAL path so ALL devices see it regardless of event key
+    db.ref('ct_global_clear').set(Date.now());
     db.ref(oldKey+'/ct_clear').set(Date.now());
     db.ref(oldKey+'/ct_admin').set(null);
     db.ref(oldKey+'/ct_squads').set(null);
