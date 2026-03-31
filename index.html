@@ -3038,10 +3038,10 @@ function drawBoard(){
   if(!db){ el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-txt">Firebase not connected</div></div>'; return; }
   var key = localStorage.getItem('ct_event_key')||'DEFAULT';
 
-  function buildHTML(status){
+  function buildHTML(status, log){
+    if(!log) log = JSON.parse(localStorage.getItem('ct_admin')||'[]');
     var allSquads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
     var totalSt = S.started ? S.stations : parseInt(document.getElementById('ev-st').value)||17;
-    var log = JSON.parse(localStorage.getItem('ct_admin')||'[]');
 
     var squadLoc = {};
     Object.keys(status).forEach(function(station){
@@ -3109,8 +3109,14 @@ function drawBoard(){
   }
 
   el.innerHTML = '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);text-align:center;padding:20px">Loading...</div>';
+  
+  // Get both station status and full score log from Firebase
   db.ref(key+'/ct_station_status').on('value', function(snap){
-    buildHTML(snap.val()||{});
+    db.ref(key+'/ct_admin').once('value').then(function(logSnap){
+      var logRaw = logSnap.val();
+      var log = logRaw ? (Array.isArray(logRaw) ? logRaw : Object.values(logRaw)) : [];
+      buildHTML(snap.val()||{}, log);
+    });
   });
 }
 
