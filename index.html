@@ -140,6 +140,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
   <div class="tab"     onclick="go('score')">Score</div>
   <div class="tab"     onclick="go('leader')">Leader</div>
   <div class="tab"     onclick="go('assign')">Assign</div>
+  <div class="tab"     onclick="go('board')">Board</div>
   <div class="tab"     onclick="go('admin')">Admin</div>
   <div class="tab"     onclick="go('scorecard')">Scorecard</div>
   <div class="tab"     onclick="go('history')">History</div>
@@ -404,6 +405,19 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </div>
 
 <!-- BOARD -->
+<!-- BOARD -->
+<div id="pg-board" class="pg">
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div class="ctitle" style="margin:0">📋 Live Squad Board</div>
+      <button class="btn btn-grey" onclick="drawBoard()" style="font-size:11px;padding:8px 14px">🔄 Refresh</button>
+    </div>
+    <div id="board-body">
+      <div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">Start a round to see live squad status</div></div>
+    </div>
+  </div>
+</div>
+
 <!-- BOARD -->
 <div id="pg-board" class="pg">
   <div class="card">
@@ -893,6 +907,7 @@ function go(name) {
   if(name==='score')     drawScore();
   if(name==='leader')    drawLeader();
   if(name==='assign')    drawAssign();
+  if(name==='board')     drawBoard();
   if(name==='board')     drawBoard();
   if(name==='admin')     drawAdmin();
   if(name==='scorecard') drawScorecardPage();
@@ -3014,6 +3029,84 @@ function drawBoard(){
 
   db.ref(key+'/ct_station_status').on('value', function(snap){
     buildBoardHTML(snap.val()||{});
+  });
+}
+
+function drawBoard(){
+  var el = document.getElementById('board-body');
+  if(!el) return;
+  if(!db){ el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-txt">Firebase not connected</div></div>'; return; }
+  var key = localStorage.getItem('ct_event_key')||'DEFAULT';
+
+  function buildHTML(status){
+    var allSquads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
+    var totalSt = S.started ? S.stations : parseInt(document.getElementById('ev-st').value)||17;
+    var log = JSON.parse(localStorage.getItem('ct_admin')||'[]');
+
+    var squadLoc = {};
+    Object.keys(status).forEach(function(station){
+      var s = status[station];
+      if(s && s.currentSquad){
+        var sq = String(s.currentSquad);
+        if(!squadLoc[sq] || s.status==='scoring')
+          squadLoc[sq] = { station:station, trapper:s.trapper||'—', status:s.status||'waiting', members:s.members||[] };
+      }
+    });
+
+    function stDone(squad){
+      var mems = squad.members||[];
+      var stCounts = {};
+      log.forEach(function(r){
+        var k = r.shooter.trim().toLowerCase();
+        if(mems.some(function(m){ return m.trim().toLowerCase()===k; })){
+          if(!stCounts[r.station]) stCounts[r.station]=0;
+          stCounts[r.station]++;
+        }
+      });
+      var done=0;
+      Object.keys(stCounts).forEach(function(st){ if(stCounts[st]>=mems.length) done++; });
+      return done;
+    }
+
+    if(!allSquads.length && !Object.keys(squadLoc).length){
+      el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">No data yet. Trappers must check in and start scoring.</div></div>';
+      return;
+    }
+
+    var html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed">'
+      +'<thead><tr style="background:var(--surf2)">'
+      +'<th style="padding:10px 8px;text-align:left;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:11px;width:60px;letter-spacing:1px">SQUAD</th>'
+      +'<th style="padding:10px 8px;text-align:left;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:11px;letter-spacing:1px">MEMBERS</th>'
+      +'<th style="padding:10px 8px;text-align:center;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:11px;width:70px;letter-spacing:1px">STATION</th>'
+      +'<th style="padding:10px 8px;text-align:center;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:11px;width:60px;letter-spacing:1px">DONE</th>'
+      +'<th style="padding:10px 8px;text-align:left;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:11px;width:120px;letter-spacing:1px">STATUS</th>'
+      +'</tr></thead><tbody>';
+
+    var sorted = allSquads.slice().sort(function(a,b){ return (parseInt(a.label||a.num)||0)-(parseInt(b.label||b.num)||0); });
+    sorted.forEach(function(sq){
+      var label = String(sq.label||sq.num);
+      var info = squadLoc[label]||{};
+      var done = stDone(sq);
+      var complete = done >= totalSt;
+      var statusColor = info.status==='scoring'?'var(--hit)':info.status==='waiting'?'var(--org)':complete?'var(--dim)':'var(--bdr)';
+      var statusText = info.status==='scoring'?'&#9679; SCORING':info.status==='waiting'?'&#9679; WAITING':complete?'&#10003; COMPLETE':'&#8212; NOT STARTED';
+      var doneColor = complete?'var(--hit)':done>0?'var(--org)':'var(--dim)';
+      var members = sq.members||[];
+      html += '<tr style="border-bottom:0.5px solid var(--bdr)">'
+        +'<td style="padding:10px 8px;font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--gold)">'+label+'</td>'
+        +'<td style="padding:10px 8px;font-size:11px;color:var(--dim)">'+members.join(', ')+'</td>'
+        +'<td style="padding:10px 8px;text-align:center;font-weight:500;font-size:16px;color:var(--txt)">'+(info.station||'—')+'</td>'
+        +'<td style="padding:10px 8px;text-align:center;font-size:12px;font-weight:500;color:'+doneColor+'">'+done+'/'+totalSt+'</td>'
+        +'<td style="padding:10px 8px;font-size:11px;color:'+statusColor+'">'+statusText+'</td>'
+        +'</tr>';
+    });
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
+  }
+
+  el.innerHTML = '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);text-align:center;padding:20px">Loading...</div>';
+  db.ref(key+'/ct_station_status').on('value', function(snap){
+    buildHTML(snap.val()||{});
   });
 }
 
