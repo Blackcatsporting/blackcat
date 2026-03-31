@@ -2199,6 +2199,10 @@ function scoreCurrentMember() {
 
     var sqKey = (squad.label||squad.num) + '_' + trapStation;
     scoredSquadKeys[sqKey] = true;
+
+    // Check if this is an assigned trapper BEFORE resetting trapSquadIdx
+    var isAssigned = trapAssignedSquad !== null && trapAssignedSquad !== undefined && trapAssignedSquad !== '';
+
     trapSquadIdx = -1;
 
     if(S.eventType === '5STAND') {
@@ -2225,7 +2229,7 @@ function scoreCurrentMember() {
     }
 
     trShow('squads');
-    if(trapAssignedSquad !== null && trapAssignedSquad !== undefined && trapAssignedSquad !== ''){
+    if(isAssigned){
       var nextStation = (trapStation + 1) % S.stations;
       // Check if all stations done using Firebase log
       var squadLabel2 = squad.label||squad.num;
