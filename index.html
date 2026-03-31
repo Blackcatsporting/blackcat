@@ -1921,9 +1921,14 @@ function drawTrapperPick() {
       trapStation = parseInt(this.value);
       scoredSquadKeys = {};
       updateArrivalNote();
+      // Register trapper at this station
+      if(trapperName) updateStationStatus(trapStation+1, null, [], 'waiting');
       buildSquadList();
     };
   }
+
+  // Register trapper at current station
+  if(trapperName) updateStationStatus(trapStation+1, null, [], 'waiting');
 
   updateArrivalNote();
 
