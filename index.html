@@ -2428,8 +2428,6 @@ function trapSubmit() {
     // Mark squad as scored so it disappears from the list
     var sqKey = currentLabel + '_' + trapStation;
     scoredSquadKeys[sqKey] = true;
-    trapScoredCount = 0;
-    trapMemberIdx = 0;
     updateStationStatus(trapStation+1, currentLabel, [], 'waiting');
     scoreCurrentMember();
   } else {
