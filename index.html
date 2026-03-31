@@ -2486,7 +2486,7 @@ function getScore(name){
 
 function drawScore(){
   var em=document.getElementById('sc-empty'),bd=document.getElementById('sc-body');
-  var log = JSON.parse(localStorage.getItem('ct_admin')||'[]');
+  var log = adminLog.length ? adminLog : JSON.parse(localStorage.getItem('ct_admin')||'[]');
   if(!log.length){em.style.display='block';bd.style.display='none';return;}
   em.style.display='none'; bd.style.display='block';
 
@@ -2564,7 +2564,7 @@ function saveRound(){
 
 function drawLeader(){
   var em=document.getElementById('lb-empty'),bd=document.getElementById('lb-body');
-  var log = JSON.parse(localStorage.getItem('ct_admin')||'[]');
+  var log = adminLog.length ? adminLog : JSON.parse(localStorage.getItem('ct_admin')||'[]');
   if(!log.length){em.style.display='block';bd.style.display='none';return;}
   em.style.display='none'; bd.style.display='block';
   document.getElementById('lb-title').textContent=S.name?S.name.toUpperCase():'LIVE LEADERBOARD';
