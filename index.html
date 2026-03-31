@@ -1481,8 +1481,8 @@ function startRound(){
   if(codeDisp) codeDisp.style.display='block';
   if(codeVal) codeVal.textContent = key;
   toast('Round started!','green');
-  // Start persistent board listener
-  startBoardListener();
+  // Restart all Firebase listeners with correct event key
+  restartFirebaseListeners();
   go('squads');
 }
 
@@ -3117,6 +3117,43 @@ function drawBoard(){
   });
 }
 
+
+function restartFirebaseListeners(){
+  if(!db) return;
+  var key = getKey();
+  // Detach old listeners
+  db.ref(key+'/ct_admin').off();
+  db.ref(key+'/ct_event_state').off();
+  db.ref(key+'/ct_squads').off();
+  db.ref(key+'/ct_active_session').off();
+  // Re-attach with correct key
+  db.ref(key+'/ct_admin').on('value', function(snap){
+    var val = snap.val();
+    if(!val) return;
+    var arr = Array.isArray(val) ? val : Object.values(val);
+    adminLog = arr;
+    localStorage.setItem('ct_admin', JSON.stringify(arr));
+    drawAdmin();
+    drawRotationBoard();
+    drawScore();
+    drawLeader();
+  });
+  db.ref(key+'/ct_event_state').on('value', function(snap){
+    var state = snap.val();
+    if(state && state.started){
+      S.started = state.started;
+      S.name = state.name;
+      S.stations = state.stations;
+      S.birds = state.birds;
+      S.stationBirds = state.stationBirds;
+      S.shooters = state.shooters;
+      S.eventType = state.eventType||'SC';
+    }
+  });
+  // Reset board listener
+  window._boardListener = null;
+  startBoardListener();
+}
 
 function startBoardListener(){
   if(window._boardListener) return;
