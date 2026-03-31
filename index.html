@@ -2425,44 +2425,11 @@ function trapSubmit() {
     el.innerHTML = '<div style="text-align:center;padding:40px 20px">'
       +'<div style="font-family:Bebas Neue,sans-serif;font-size:48px;color:var(--hit);letter-spacing:3px;margin-bottom:8px">✓ SQUAD '+currentLabel+'</div>'
       +'<div style="font-family:DM Mono,monospace;font-size:13px;color:var(--dim);letter-spacing:2px;margin-bottom:40px">STATION '+(trapStation+1)+' — COMPLETE</div>'
-      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px;text-align:center;margin-bottom:12px">Hold button to proceed</div>'
-      +'<button id="next-squad-hold-btn" style="display:block;width:100%;padding:22px;background:var(--org);border:none;border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:32px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:14px;position:relative;overflow:hidden;user-select:none;-webkit-user-select:none">NEXT SQUAD →<div id="next-squad-progress" style="position:absolute;left:0;top:0;height:100%;width:0%;background:rgba(255,255,255,0.3);transition:none;pointer-events:none"></div></button>'
+      +'<button onclick="drawTrapperPick()" style="display:block;width:100%;padding:22px;background:var(--org);border:none;border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:32px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:14px">NEXT SQUAD →</button>'
       +'<button onclick="markStationComplete()" style="display:block;width:100%;padding:14px;background:none;border:1px solid var(--bdr);border-radius:10px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);cursor:pointer;letter-spacing:1px">✓ NO MORE SQUADS — STATION COMPLETE</button>'
+      +'<button onclick="switchToTrapper()" style="display:block;width:100%;padding:12px;background:none;border:none;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);cursor:pointer;letter-spacing:1px;margin-top:10px">↩ SIGN OUT</button>'
       +'</div>';
     trShow('squads');
-
-    // Hold-to-confirm on NEXT SQUAD button
-    setTimeout(function(){
-      var btn = document.getElementById('next-squad-hold-btn');
-      var prog = document.getElementById('next-squad-progress');
-      if(!btn || !prog) return;
-      var holdTimer = null;
-      var startTime = null;
-      var HOLD_MS = 1500;
-
-      function startHold(e){
-        e.preventDefault();
-        startTime = Date.now();
-        prog.style.transition = 'width '+HOLD_MS+'ms linear';
-        prog.style.width = '100%';
-        holdTimer = setTimeout(function(){
-          prog.style.transition = 'none';
-          prog.style.width = '0%';
-          drawTrapperPick();
-        }, HOLD_MS);
-      }
-
-      function cancelHold(){
-        if(holdTimer){ clearTimeout(holdTimer); holdTimer = null; }
-        prog.style.transition = 'none';
-        prog.style.width = '0%';
-      }
-
-      btn.addEventListener('pointerdown', startHold);
-      btn.addEventListener('pointerup', cancelHold);
-      btn.addEventListener('pointerleave', cancelHold);
-      btn.addEventListener('pointercancel', cancelHold);
-    }, 100);
   } else {
     scoreCurrentMember();
   }
