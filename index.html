@@ -2007,12 +2007,10 @@ function buildSquadList() {
   }
 
   if(unscoredCount === 0){
-
-    var nextStation = (trapStation + 1) % S.stations;
     el.innerHTML = '<div style="text-align:center;padding:30px">'
       + '<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:10px">&#10003; STATION '+(trapStation+1)+' COMPLETE</div>'
-      + '<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);margin-bottom:20px">All squads scored at this station</div>'
-      + '<button onclick="moveToNextStation()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; Move to Station '+(nextStation+1)+'</button>'
+      + '<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);margin-bottom:30px">All squads scored at this station</div>'
+      + '<button onclick="switchToTrapper()" style="display:block;width:100%;padding:14px;background:none;border:1px solid var(--bdr);border-radius:10px;font-family:DM Mono,monospace;font-size:13px;color:var(--dim);cursor:pointer;letter-spacing:1px">&#8617; Sign Out</button>'
       + '</div>';
     return;
   }
