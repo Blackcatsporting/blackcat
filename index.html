@@ -3163,16 +3163,21 @@ function startBoardListener(){
     db.ref(key+'/ct_admin').once('value').then(function(logSnap){
       var logRaw = logSnap.val();
       var log = logRaw ? (Array.isArray(logRaw) ? logRaw : Object.values(logRaw)) : [];
-      renderBoardTable(snap.val()||{}, log);
+      // Get station count from Firebase event state
+      db.ref(key+'/ct_event_state').once('value').then(function(stateSnap){
+        var state = stateSnap.val();
+        var totalSt = state ? state.stations : (S.started ? S.stations : 17);
+        renderBoardTable(snap.val()||{}, log, totalSt);
+      });
     });
   });
 }
 
-function renderBoardTable(status, log){
+function renderBoardTable(status, log, totalStations){
   var el = document.getElementById('board-body');
   if(!el) return;
   var allSquads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
-  var totalSt = S.started ? S.stations : parseInt(document.getElementById('ev-st').value)||17;
+  var totalSt = totalStations || (S.started ? S.stations : parseInt(document.getElementById('ev-st').value)||17);
 
   // Build squad location map from station status
   var squadLoc = {};
@@ -3255,7 +3260,11 @@ function drawBoard(){
     db.ref(key+'/ct_admin').once('value').then(function(logSnap){
       var logRaw = logSnap.val();
       var log = logRaw ? (Array.isArray(logRaw) ? logRaw : Object.values(logRaw)) : [];
-      renderBoardTable(snap.val()||{}, log);
+      db.ref(key+'/ct_event_state').once('value').then(function(stateSnap){
+        var state = stateSnap.val();
+        var totalSt = state ? state.stations : (S.started ? S.stations : 17);
+        renderBoardTable(snap.val()||{}, log, totalSt);
+      });
     });
   });
 }
