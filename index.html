@@ -3013,102 +3013,7 @@ function getNextSquadInRotation(currentLabel){
 
 
 
-function startBoardListener(){
-  if(window._boardListener) return;
-  if(!db) return;
-  var key = localStorage.getItem('ct_event_key')||'DEFAULT';
-  window._boardListener = db.ref(key+'/ct_station_status').on('value', function(snap){
-    var el = document.getElementById('board-body');
-    if(!el) return;
-    // Also refresh done counter from Firebase log
-    db.ref(key+'/ct_admin').once('value').then(function(logSnap){
-      var logRaw = logSnap.val();
-      var log = logRaw ? (Array.isArray(logRaw) ? logRaw : Object.values(logRaw)) : [];
-      buildBoardHTML(snap.val()||{}, log);
-    });
-  });
-}
 
-function drawBoard(){
-  var el = document.getElementById('board-body');
-  if(!db){ el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-txt">Firebase not connected</div></div>'; return; }
-  var key = localStorage.getItem('ct_event_key')||'DEFAULT';
-  el.innerHTML='<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);text-align:center;padding:20px">Loading...</div>';
-
-  function buildBoardHTML(status){
-    var allSquads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
-    var totalStations = S.started ? S.stations : parseInt(document.getElementById('ev-st').value)||17;
-    var log = JSON.parse(localStorage.getItem('ct_admin')||'[]');
-
-    // Build squad-to-station map
-    var squadLocation = {};
-    Object.keys(status).forEach(function(station){
-      var s = status[station];
-      if(s && s.currentSquad){
-        var sq = String(s.currentSquad);
-        if(!squadLocation[sq] || s.status==='scoring'){
-          squadLocation[sq] = { station:station, trapper:s.trapper||'—', status:s.status||'waiting', members:s.members||[] };
-        }
-      }
-    });
-
-    // Count completed stations per squad
-    function stationsDone(squad){
-      var members = squad.members||[];
-      var stationCounts = {};
-      log.forEach(function(r){
-        var k = r.shooter.trim().toLowerCase();
-        if(members.some(function(m){ return m.trim().toLowerCase()===k; })){
-          if(!stationCounts[r.station]) stationCounts[r.station]=0;
-          stationCounts[r.station]++;
-        }
-      });
-      var done = 0;
-      Object.keys(stationCounts).forEach(function(st){
-        if(stationCounts[st]>=members.length) done++;
-      });
-      return done;
-    }
-
-    if(!allSquads.length && !Object.keys(squadLocation).length){
-      el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">No data yet. Trappers must check in and start scoring.</div></div>';
-      return;
-    }
-
-    var html = '<table style="width:100%;border-collapse:collapse">';
-    html += '<tr style="background:var(--surf2)">'
-      +'<th style="padding:10px 6px;font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px;text-align:left;border-bottom:2px solid var(--bdr)">SQUAD</th>'
-      +'<th style="padding:10px 6px;font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px;text-align:left;border-bottom:2px solid var(--bdr)">MEMBERS</th>'
-      +'<th style="padding:10px 6px;font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px;text-align:center;border-bottom:2px solid var(--bdr)">STATION</th>'
-      +'<th style="padding:10px 6px;font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px;text-align:center;border-bottom:2px solid var(--bdr)">DONE</th>'
-      +'<th style="padding:10px 6px;font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px;text-align:left;border-bottom:2px solid var(--bdr)">STATUS</th>'
-      +'</tr>';
-
-    var sorted = allSquads.slice().sort(function(a,b){ return (parseInt(a.label||a.num)||0)-(parseInt(b.label||b.num)||0); });
-    sorted.forEach(function(sq){
-      var label = String(sq.label||sq.num);
-      var info = squadLocation[label]||{};
-      var done = stationsDone(sq);
-      var statusColor = done>=totalStations?'var(--dim)':info.status==='scoring'?'var(--hit)':info.status==='waiting'?'var(--org)':'var(--bdr)';
-      var statusText = done>=totalStations?'✓ COMPLETE':info.status==='scoring'?'🟢 SCORING':info.status==='waiting'?'🟡 WAITING':'— NOT STARTED';
-      var members = sq.members||[];
-      var doneColor = done>=totalStations?'var(--hit)':done>0?'var(--org)':'var(--dim)';
-      html += '<tr style="border-bottom:1px solid var(--bdr)">'
-        +'<td style="padding:10px 6px;font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--gold)">'+label+'</td>'
-        +'<td style="padding:10px 6px;font-family:DM Mono,monospace;font-size:10px;color:var(--dim)">'+members.join(', ')+'</td>'
-        +'<td style="padding:10px 6px;font-family:Bebas Neue,sans-serif;font-size:18px;color:var(--txt);text-align:center">'+(info.station||'—')+'</td>'
-        +'<td style="padding:10px 6px;font-family:DM Mono,monospace;font-size:12px;font-weight:700;color:'+doneColor+';text-align:center">'+done+'/'+totalStations+'</td>'
-        +'<td style="padding:10px 6px;font-family:DM Mono,monospace;font-size:10px;color:'+statusColor+'">'+statusText+'</td>'
-        +'</tr>';
-    });
-    html += '</table>';
-    el.innerHTML = html;
-  }
-
-  db.ref(key+'/ct_station_status').on('value', function(snap){
-    buildBoardHTML(snap.val()||{});
-  });
-}
 
 function drawBoard(){
   var el = document.getElementById('board-body');
@@ -3158,6 +3063,7 @@ function drawBoard(){
       +'<thead><tr style="background:var(--surf2)">'
       +'<th style="padding:10px 8px;text-align:left;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:11px;width:60px;letter-spacing:1px">SQUAD</th>'
       +'<th style="padding:10px 8px;text-align:left;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:11px;letter-spacing:1px">MEMBERS</th>'
+      +'<th style="padding:10px 8px;text-align:left;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:11px;width:90px;letter-spacing:1px">TRAPPER</th>'
       +'<th style="padding:10px 8px;text-align:center;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:11px;width:70px;letter-spacing:1px">STATION</th>'
       +'<th style="padding:10px 8px;text-align:center;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:11px;width:60px;letter-spacing:1px">DONE</th>'
       +'<th style="padding:10px 8px;text-align:left;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:11px;width:120px;letter-spacing:1px">STATUS</th>'
@@ -3176,6 +3082,7 @@ function drawBoard(){
       html += '<tr style="border-bottom:0.5px solid var(--bdr)">'
         +'<td style="padding:10px 8px;font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--gold)">'+label+'</td>'
         +'<td style="padding:10px 8px;font-size:11px;color:var(--dim)">'+members.join(', ')+'</td>'
+        +'<td style="padding:10px 8px;font-size:11px;color:var(--dim)">'+(info.trapper||'—')+'</td>'
         +'<td style="padding:10px 8px;text-align:center;font-weight:500;font-size:16px;color:var(--txt)">'+(info.station||'—')+'</td>'
         +'<td style="padding:10px 8px;text-align:center;font-size:12px;font-weight:500;color:'+doneColor+'">'+done+'/'+totalSt+'</td>'
         +'<td style="padding:10px 8px;font-size:11px;color:'+statusColor+'">'+statusText+'</td>'
@@ -3193,6 +3100,112 @@ function drawBoard(){
       var logRaw = logSnap.val();
       var log = logRaw ? (Array.isArray(logRaw) ? logRaw : Object.values(logRaw)) : [];
       buildHTML(snap.val()||{}, log);
+    });
+  });
+}
+
+
+function startBoardListener(){
+  if(window._boardListener) return;
+  if(!db) return;
+  var key = localStorage.getItem('ct_event_key')||'DEFAULT';
+  window._boardListener = db.ref(key+'/ct_station_status').on('value', function(snap){
+    db.ref(key+'/ct_admin').once('value').then(function(logSnap){
+      var logRaw = logSnap.val();
+      var log = logRaw ? (Array.isArray(logRaw) ? logRaw : Object.values(logRaw)) : [];
+      renderBoardTable(snap.val()||{}, log);
+    });
+  });
+}
+
+function renderBoardTable(status, log){
+  var el = document.getElementById('board-body');
+  if(!el) return;
+  var allSquads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
+  var totalSt = S.started ? S.stations : parseInt(document.getElementById('ev-st').value)||17;
+
+  // Build squad location map from station status
+  var squadLoc = {};
+  Object.keys(status).forEach(function(station){
+    var s = status[station];
+    if(s && s.currentSquad){
+      var sq = String(s.currentSquad);
+      if(!squadLoc[sq] || s.status==='scoring'){
+        squadLoc[sq] = { station:station, trapper:s.trapper||'—', status:s.status||'waiting', members:s.members||[] };
+      }
+    }
+  });
+
+  // Count completed stations per squad from log
+  function stDone(squad){
+    var mems = (squad.members||[]).map(function(m){ return m.trim().toLowerCase(); });
+    if(!mems.length) return 0;
+    var stMap = {};
+    log.forEach(function(r){
+      var k = r.shooter ? r.shooter.trim().toLowerCase() : '';
+      if(mems.indexOf(k) !== -1){
+        var st = String(r.station);
+        if(!stMap[st]) stMap[st] = {};
+        stMap[st][k] = true;
+      }
+    });
+    var done = 0;
+    Object.keys(stMap).forEach(function(st){
+      if(Object.keys(stMap[st]).length >= mems.length) done++;
+    });
+    return done;
+  }
+
+  if(!allSquads.length && !Object.keys(squadLoc).length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">No data yet. Start a round and have trappers check in.</div></div>';
+    return;
+  }
+
+  var html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed">'
+    +'<thead><tr style="background:var(--surf2)">'
+    +'<th style="padding:10px 6px;text-align:left;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:10px;width:50px;letter-spacing:1px">SQUAD</th>'
+    +'<th style="padding:10px 6px;text-align:left;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:10px;letter-spacing:1px">MEMBERS</th>'
+    +'<th style="padding:10px 6px;text-align:left;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:10px;width:80px;letter-spacing:1px">TRAPPER</th>'
+    +'<th style="padding:10px 6px;text-align:center;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:10px;width:60px;letter-spacing:1px">STATION</th>'
+    +'<th style="padding:10px 6px;text-align:center;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:10px;width:55px;letter-spacing:1px">DONE</th>'
+    +'<th style="padding:10px 6px;text-align:left;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:10px;width:100px;letter-spacing:1px">STATUS</th>'
+    +'</tr></thead><tbody>';
+
+  var sorted = allSquads.slice().sort(function(a,b){ return (parseInt(a.label||a.num)||0)-(parseInt(b.label||b.num)||0); });
+  sorted.forEach(function(sq){
+    var label = String(sq.label||sq.num);
+    var info = squadLoc[label]||{};
+    var done = stDone(sq);
+    var complete = done >= totalSt;
+    var statusColor = complete ? 'var(--hit)' : info.status==='scoring' ? 'var(--hit)' : info.status==='waiting' ? 'var(--org)' : 'var(--bdr)';
+    var statusText = complete ? '&#10003; COMPLETE' : info.status==='scoring' ? '&#9679; SCORING' : info.status==='waiting' ? '&#9679; WAITING' : '&#8212; NOT STARTED';
+    var doneColor = complete ? 'var(--hit)' : done > 0 ? 'var(--org)' : 'var(--dim)';
+    var members = sq.members||[];
+    html += '<tr style="border-bottom:0.5px solid var(--bdr)">'
+      +'<td style="padding:10px 6px;font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--gold)">'+label+'</td>'
+      +'<td style="padding:10px 6px;font-size:11px;color:var(--dim)">'+members.join(', ')+'</td>'
+      +'<td style="padding:10px 6px;font-size:11px;color:var(--txt)">'+(info.trapper||'—')+'</td>'
+      +'<td style="padding:10px 6px;text-align:center;font-weight:500;font-size:16px;color:var(--txt)">'+(info.station||'—')+'</td>'
+      +'<td style="padding:10px 6px;text-align:center;font-size:12px;font-weight:700;color:'+doneColor+'">'+done+'/'+totalSt+'</td>'
+      +'<td style="padding:10px 6px;font-size:10px;color:'+statusColor+'">'+statusText+'</td>'
+      +'</tr>';
+  });
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+function drawBoard(){
+  var el = document.getElementById('board-body');
+  if(!el) return;
+  if(!db){ el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-txt">Firebase not connected</div></div>'; return; }
+  el.innerHTML='<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);text-align:center;padding:20px">Loading...</div>';
+  startBoardListener();
+  var key = localStorage.getItem('ct_event_key')||'DEFAULT';
+  db.ref(key+'/ct_station_status').once('value').then(function(snap){
+    db.ref(key+'/ct_admin').once('value').then(function(logSnap){
+      var logRaw = logSnap.val();
+      var log = logRaw ? (Array.isArray(logRaw) ? logRaw : Object.values(logRaw)) : [];
+      renderBoardTable(snap.val()||{}, log);
     });
   });
 }
