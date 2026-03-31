@@ -2010,7 +2010,7 @@ function buildSquadList() {
     el.innerHTML = '<div style="text-align:center;padding:30px">'
       + '<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:10px">&#10003; STATION '+(trapStation+1)+' COMPLETE</div>'
       + '<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);margin-bottom:30px">All squads scored at this station</div>'
-      + '<button onclick="switchToTrapper()" style="display:block;width:100%;padding:14px;background:none;border:1px solid var(--bdr);border-radius:10px;font-family:DM Mono,monospace;font-size:13px;color:var(--dim);cursor:pointer;letter-spacing:1px">&#8617; Sign Out</button>'
+      + '<button onclick="switchToTrapper()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:12px">&#8617; SIGN OUT</button>'
       + '</div>';
     return;
   }
@@ -2233,8 +2233,9 @@ function scoreCurrentMember() {
           updateStationStatus(trapStation+1, squadLabel2, squadMembers2, 'complete');
           var el3 = document.getElementById('tr-squad-list');
           if(el3) el3.innerHTML = '<div style="text-align:center;padding:40px 20px">'
-            +'<div style="font-family:Bebas Neue,sans-serif;font-size:36px;color:var(--hit);letter-spacing:3px;margin-bottom:10px">&#10003; ALL STATIONS COMPLETE</div>'
++'<div style="font-family:Bebas Neue,sans-serif;font-size:36px;color:var(--hit);letter-spacing:3px;margin-bottom:10px">&#10003; ALL STATIONS COMPLETE</div>'
             +'<div style="font-family:DM Mono,monospace;font-size:13px;color:var(--dim);letter-spacing:2px;margin-bottom:30px">Squad '+squadLabel2+' — Event Complete</div>'
+            +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px;margin-bottom:20px">Tap anywhere to sign out</div>'
             +'<button onclick="switchToTrapper()" style="display:block;width:100%;padding:14px;background:none;border:1px solid var(--bdr);border-radius:10px;font-family:DM Mono,monospace;font-size:13px;color:var(--dim);cursor:pointer;letter-spacing:1px">&#8617; Sign Out</button>'
             +'</div>';
         } else {
@@ -3931,6 +3932,20 @@ document.getElementById('roster-inp').addEventListener('keydown',function(e){if(
 drawChips();
 buildStationBirdsList();
 renderManualSquads();
+
+// On every page load, check if admin cleared recently
+if(db){
+  db.ref('ct_global_clear').once('value').then(function(snap){
+    var clearTime = snap.val();
+    if(clearTime && clearTime > Date.now() - 60000){
+      // Clear was within last 60 seconds - wipe and show start screen
+      localStorage.removeItem('ct_squads');
+      localStorage.removeItem('ct_active_session');
+      localStorage.removeItem('ct_event_key');
+      S.started = false; S.squads = []; S.shooters = [];
+    }
+  });
+}
 
 // Failsafe - if startup overlay is gone but app-wrap is hidden, show it
 setTimeout(function(){
