@@ -2425,8 +2425,8 @@ function trapSubmit() {
     el.innerHTML = '<div style="text-align:center;padding:40px 20px">'
       +'<div style="font-family:Bebas Neue,sans-serif;font-size:48px;color:var(--hit);letter-spacing:3px;margin-bottom:8px">✓ SQUAD '+currentLabel+'</div>'
       +'<div style="font-family:DM Mono,monospace;font-size:13px;color:var(--dim);letter-spacing:2px;margin-bottom:40px">STATION '+(trapStation+1)+' — COMPLETE</div>'
-      +'<button onclick="drawTrapperPick()" style="display:block;width:100%;padding:22px;background:var(--org);border:none;border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:32px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:14px">NEXT SQUAD →</button>'
-      +'<button onclick="markStationComplete()" style="display:block;width:100%;padding:14px;background:none;border:1px solid var(--bdr);border-radius:10px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);cursor:pointer;letter-spacing:1px">✓ NO MORE SQUADS — STATION COMPLETE</button>'
+      +'<button onclick="advanceToNextStation()" style="display:block;width:100%;padding:22px;background:var(--org);border:none;border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:32px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:14px">NEXT STATION →</button>'
+      +'<button onclick="markStationComplete()" style="display:block;width:100%;padding:14px;background:none;border:1px solid var(--bdr);border-radius:10px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);cursor:pointer;letter-spacing:1px">✓ ALL STATIONS DONE</button>'
       +'<button onclick="switchToTrapper()" style="display:block;width:100%;padding:12px;background:none;border:none;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);cursor:pointer;letter-spacing:1px;margin-top:10px">↩ SIGN OUT</button>'
       +'</div>';
     trShow('squads');
@@ -2911,6 +2911,22 @@ function confirmSquadAndScore(){
 
   // Show who shoots first
   startScoringSquad(sqIdx, true);
+}
+
+function advanceToNextStation(){
+  // Increment station number (wraps around)
+  trapStation = (trapStation + 1) % S.stations;
+  var stSel = document.getElementById('tr-st');
+  if(stSel) stSel.value = String(trapStation);
+  scoredSquadKeys = {};
+
+  if(trapAssignedSquad !== null && trapAssignedSquad !== undefined && trapAssignedSquad !== ''){
+    // Assigned trapper — stay with same squad at new station
+    buildSquadList();
+  } else {
+    // Station trapper — show squads arriving at new station
+    buildSquadList();
+  }
 }
 
 function markStationComplete(){
