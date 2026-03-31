@@ -1359,6 +1359,7 @@ function newEvent(){
   localStorage.setItem('ct_admin','[]');
   if(db){
     var oldKey = getKey();
+    window._boardListener = null;
     // Push clear signal to GLOBAL path so ALL devices see it regardless of event key
     db.ref('ct_global_clear').set(Date.now());
     db.ref(oldKey+'/ct_clear').set(Date.now());
@@ -1479,7 +1480,10 @@ function startRound(){
   var codeVal = document.getElementById('event-code-value');
   if(codeDisp) codeDisp.style.display='block';
   if(codeVal) codeVal.textContent = key;
-  toast('Round started!','green'); go('squads');
+  toast('Round started!','green');
+  // Start persistent board listener
+  startBoardListener();
+  go('squads');
 }
 
 function addLateEntry(){
@@ -3011,6 +3015,22 @@ function getNextSquadInRotation(currentLabel){
 
 
 
+function startBoardListener(){
+  if(window._boardListener) return;
+  if(!db) return;
+  var key = localStorage.getItem('ct_event_key')||'DEFAULT';
+  window._boardListener = db.ref(key+'/ct_station_status').on('value', function(snap){
+    var el = document.getElementById('board-body');
+    if(!el) return;
+    // Also refresh done counter from Firebase log
+    db.ref(key+'/ct_admin').once('value').then(function(logSnap){
+      var logRaw = logSnap.val();
+      var log = logRaw ? (Array.isArray(logRaw) ? logRaw : Object.values(logRaw)) : [];
+      buildBoardHTML(snap.val()||{}, log);
+    });
+  });
+}
+
 function drawBoard(){
   var el = document.getElementById('board-body');
   if(!db){ el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-txt">Firebase not connected</div></div>'; return; }
@@ -3099,7 +3119,6 @@ function drawBoard(){
   var key = localStorage.getItem('ct_event_key')||'DEFAULT';
 
   function buildHTML(status, log){
-    if(!log) log = JSON.parse(localStorage.getItem('ct_admin')||'[]');
     var allSquads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
     var totalSt = S.started ? S.stations : parseInt(document.getElementById('ev-st').value)||17;
 
