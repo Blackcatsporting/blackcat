@@ -3255,7 +3255,7 @@ function renderBoardTable(status, log, totalStations){
     var label = String(sq.label||sq.num);
     var info = squadLoc[label]||{};
     var done = stDone(sq);
-    var complete = done >= totalSt;
+    var complete = done >= totalSt || info.status === 'complete';
     var statusColor = complete ? 'var(--hit)' : info.status==='scoring' ? 'var(--hit)' : info.status==='waiting' ? 'var(--org)' : 'var(--bdr)';
     var statusText = complete ? '&#10003; COMPLETE' : info.status==='scoring' ? '&#9679; SCORING' : info.status==='waiting' ? '&#9679; WAITING' : '&#8212; NOT STARTED';
     var doneColor = complete ? 'var(--hit)' : done > 0 ? 'var(--org)' : 'var(--dim)';
@@ -3264,7 +3264,7 @@ function renderBoardTable(status, log, totalStations){
       +'<td style="padding:10px 6px;font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--gold)">'+label+'</td>'
       +'<td style="padding:10px 6px;font-size:11px;color:var(--dim)">'+members.join(', ')+'</td>'
       +'<td style="padding:10px 6px;font-size:11px;color:var(--txt)">'+(info.trapper||'—')+'</td>'
-      +'<td style="padding:10px 6px;text-align:center;font-weight:500;font-size:16px;color:var(--txt)">'+(complete?'—':(info.station||'—'))+'</td>'
+      +'<td style="padding:10px 6px;text-align:center;font-weight:500;font-size:16px;color:var(--txt)">'+(complete || info.status==='complete'?'—':(info.station||'—'))+'</td>'
       +'<td style="padding:10px 6px;text-align:center;font-size:12px;font-weight:700;color:'+doneColor+'">'+done+'/'+totalSt+'</td>'
       +'<td style="padding:10px 6px;font-size:10px;color:'+statusColor+'">'+statusText+'</td>'
       +'</tr>';
