@@ -315,7 +315,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
       <div id="tr-conn-status" style="font-family:DM Mono,monospace;font-size:10px;letter-spacing:1px;padding:4px 10px;border-radius:20px;background:var(--surf2);color:var(--dim)">● CONNECTING</div>
     </div>
     <div id="tr-squad-list"></div>
-    <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--bdr)">
+    <div id="tr-signout-btn" style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--bdr)">
       <button onclick="switchToTrapper()" style="padding:10px 20px;background:none;border:1px solid var(--bdr);border-radius:8px;color:var(--dim);font-family:DM Mono,monospace;font-size:10px;letter-spacing:1px;cursor:pointer">↩ SIGN OUT / START OVER</button>
     </div>
   </div>
@@ -790,6 +790,9 @@ function connectAsTrapper(){
             if(a.assignedSquad !== null && a.assignedSquad !== undefined){
               trapAssignedSquad = a.assignedSquad;
             }
+            // Hide sign out button for assigned trappers
+            var signoutBtn = document.getElementById('tr-signout-btn');
+            if(a.assignedSquad && signoutBtn) signoutBtn.style.display = 'none';
             // Update board with assignment
             if(a.assignedSquad && a.assignedStation !== null){
               var squads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
@@ -867,6 +870,9 @@ function confirmTrapperName_unused(){
 }
 
 function switchToTrapper(){
+  // Show sign out button again
+  var signoutBtn = document.getElementById('tr-signout-btn');
+  if(signoutBtn) signoutBtn.style.display = 'block';
   // Clear refresh timer
   if(window._trapperRefreshTimer){ clearInterval(window._trapperRefreshTimer); window._trapperRefreshTimer=null; }
   // Clear stored event key and trapper state
@@ -2083,7 +2089,13 @@ function buildSquadList() {
     renderedSqKeys[sqKey] = true;
 
     var done = stationsDone(sq);
-    var isComplete = done >= S.stations;
+    // isComplete = scored at THIS station specifically (not all stations)
+    var scoredAtThisStation = 0;
+    sq.members.forEach(function(m){
+      var k = m.trim().toLowerCase();
+      if(logMap[k] && logMap[k][trapStation]) scoredAtThisStation++;
+    });
+    var isComplete = scoredAtThisStation >= sq.members.length;
 
     var btn = document.createElement('button');
     btn.type = 'button';
