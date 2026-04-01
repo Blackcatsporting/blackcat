@@ -4037,16 +4037,20 @@ drawChips();
 buildStationBirdsList();
 renderManualSquads();
 
-// On every page load, check if admin cleared recently
+// On every page load, check if admin cleared recently (within 5 minutes)
 if(db){
   db.ref('ct_global_clear').once('value').then(function(snap){
     var clearTime = snap.val();
-    if(clearTime && clearTime > Date.now() - 30000){
-      // Clear was within last 60 seconds - wipe and show start screen
+    var storedKey = localStorage.getItem('ct_event_key');
+    if(clearTime && clearTime > Date.now() - 300000 && storedKey){
+      // Clear happened recently and device has old event data - wipe it
       localStorage.removeItem('ct_squads');
       localStorage.removeItem('ct_active_session');
       localStorage.removeItem('ct_event_key');
+      localStorage.setItem('ct_admin','[]');
       S.started = false; S.squads = []; S.shooters = [];
+      // Force reload to show fresh start screen
+      location.reload();
     }
   });
 }
