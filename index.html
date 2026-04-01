@@ -2025,7 +2025,6 @@ function buildSquadList() {
       + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px;margin-top:10px">Tap anywhere to sign out</div>'
       + '</div>';
     // Auto sign out after 60 seconds
-    setTimeout(function(){ if(trapperName) switchToTrapper(); }, 60000);
     return;
   }
 
@@ -2259,7 +2258,6 @@ function scoreCurrentMember() {
             +'<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px">Tap anywhere to sign out</div>'
             +'</div>';
           // Auto sign out after 60 seconds
-          setTimeout(function(){ if(trapperName) switchToTrapper(); }, 60000);
         } else {
           var nextSt = (trapStation + 1) % S.stations;
           var el3 = document.getElementById('tr-squad-list');
@@ -4036,7 +4034,7 @@ renderManualSquads();
 if(db){
   db.ref('ct_global_clear').once('value').then(function(snap){
     var clearTime = snap.val();
-    if(clearTime && clearTime > Date.now() - 60000){
+    if(clearTime && clearTime > Date.now() - 30000){
       // Clear was within last 60 seconds - wipe and show start screen
       localStorage.removeItem('ct_squads');
       localStorage.removeItem('ct_active_session');
