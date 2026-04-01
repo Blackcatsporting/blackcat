@@ -2018,6 +2018,8 @@ function buildSquadList() {
   }
 
   if(unscoredCount === 0){
+    // Push complete status to Board
+    updateStationStatus(trapStation+1, null, [], 'complete');
     el.innerHTML = '<div onclick="switchToTrapper()" style="text-align:center;padding:30px;cursor:pointer">'
 + '<div onclick="switchToTrapper()" style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:10px">&#10003; STATION '+(trapStation+1)+' COMPLETE</div>'
       + '<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);margin-bottom:30px">All squads scored at this station</div>'
