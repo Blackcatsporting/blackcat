@@ -2461,8 +2461,23 @@ function buildTrapperBirds() {
 
   var deadBtn = document.getElementById('tr-dead-btn');
   var lostBtn = document.getElementById('tr-lost-btn');
+  var submitBtn = document.getElementById('tr-submit-btn');
   deadBtn.onpointerdown = function(e){ handleDeadTap(e); };
   lostBtn.onpointerdown = function(e){ handleLostTap(e); };
+  // Disable submit if any birds unscored
+  if(submitBtn){
+    if(left > 0){
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.4';
+      submitBtn.style.cursor = 'not-allowed';
+      submitBtn.textContent = '&#10003; Submit ('+left+' remaining)';
+    } else {
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+      submitBtn.style.cursor = 'pointer';
+      submitBtn.innerHTML = '&#10003; Submit';
+    }
+  }
 }
 
 function trapSubmit() {
