@@ -2076,13 +2076,7 @@ function buildSquadList() {
     renderedSqKeys[sqKey] = true;
 
     var done = stationsDone(sq);
-    // isComplete = scored at THIS station specifically (not all stations)
-    var scoredAtThisStation = 0;
-    sq.members.forEach(function(m){
-      var k = m.trim().toLowerCase();
-      if(logMap[k] && logMap[k][trapStation]) scoredAtThisStation++;
-    });
-    var isComplete = scoredAtThisStation >= sq.members.length;
+    var isComplete = false; // Never mark complete from log - only from scoredSquadKeys
 
     var btn = document.createElement('button');
     btn.type = 'button';
