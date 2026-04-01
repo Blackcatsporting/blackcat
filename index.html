@@ -3210,14 +3210,20 @@ function renderBoardTable(status, log, totalStations){
   var allSquads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
   var totalSt = totalStations || (S.started ? S.stations : parseInt(document.getElementById('ev-st').value)||17);
 
-  // Build squad location map from station status
+  // Build squad location map - one entry per trapper (multiple trappers can score same squad)
   var squadLoc = {};
   Object.keys(status).forEach(function(trapKey){
     var s = status[trapKey];
     if(s && s.currentSquad){
       var sq = String(s.currentSquad);
-      if(!squadLoc[sq] || s.status==='scoring'){
-        squadLoc[sq] = { station:s.station, trapper:s.trapper||'—', status:s.status||'waiting', members:s.members||[] };
+      if(!squadLoc[sq]) squadLoc[sq] = [];
+      // Update existing entry for this trapper or add new
+      var existing = squadLoc[sq].find(function(e){ return e.trapper === s.trapper; });
+      if(existing){
+        existing.station = s.station;
+        existing.status = s.status;
+      } else {
+        squadLoc[sq].push({ station:s.station, trapper:s.trapper||'—', status:s.status||'waiting' });
       }
     }
   });
@@ -3269,18 +3275,24 @@ function renderBoardTable(status, log, totalStations){
   var sorted = allSquads.slice().sort(function(a,b){ return (parseInt(a.label||a.num)||0)-(parseInt(b.label||b.num)||0); });
   sorted.forEach(function(sq){
     var label = String(sq.label||sq.num);
-    var info = squadLoc[label]||{};
+    var infos = squadLoc[label]||[];
     var done = stDone(sq);
-    var complete = done >= totalSt || info.status === 'complete';
-    var statusColor = complete ? 'var(--hit)' : info.status==='scoring' ? 'var(--hit)' : info.status==='waiting' ? 'var(--org)' : 'var(--bdr)';
-    var statusText = complete ? '&#10003; COMPLETE' : info.status==='scoring' ? '&#9679; SCORING' : info.status==='waiting' ? '&#9679; WAITING' : '&#8212; NOT STARTED';
+    var anyScoring = infos.some(function(i){ return i.status==='scoring'; });
+    var anyWaiting = infos.some(function(i){ return i.status==='waiting'; });
+    var anyComplete = infos.some(function(i){ return i.status==='complete'; });
+    var complete = done >= totalSt || anyComplete;
+    var statusColor = complete ? 'var(--hit)' : anyScoring ? 'var(--hit)' : anyWaiting ? 'var(--org)' : 'var(--bdr)';
+    var statusText = complete ? '&#10003; COMPLETE' : anyScoring ? '&#9679; SCORING' : anyWaiting ? '&#9679; WAITING' : '&#8212; NOT STARTED';
     var doneColor = complete ? 'var(--hit)' : done > 0 ? 'var(--org)' : 'var(--dim)';
     var members = sq.members||[];
+    // Build trapper/station display
+    var trapperDisplay = infos.length ? infos.map(function(i){ return (i.trapper||'—')+' (St '+(i.station||'—')+')'; }).join(', ') : '—';
+    var stationDisplay = complete ? '—' : infos.length ? infos.map(function(i){ return i.station||'—'; }).join(', ') : '—';
     html += '<tr style="border-bottom:0.5px solid var(--bdr)">'
       +'<td style="padding:10px 6px;font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--gold)">'+label+'</td>'
       +'<td style="padding:10px 6px;font-size:11px;color:var(--dim)">'+members.join(', ')+'</td>'
-      +'<td style="padding:10px 6px;font-size:11px;color:var(--txt)">'+(info.trapper||'—')+'</td>'
-      +'<td style="padding:10px 6px;text-align:center;font-weight:500;font-size:16px;color:var(--txt)">'+(complete || info.status==='complete'?'—':(info.station||'—'))+'</td>'
+      +'<td style="padding:10px 6px;font-size:11px;color:var(--txt)">'+trapperDisplay+'</td>'
+      +'<td style="padding:10px 6px;text-align:center;font-weight:500;font-size:16px;color:var(--txt)">'+stationDisplay+'</td>'
       +'<td style="padding:10px 6px;text-align:center;font-size:12px;font-weight:700;color:'+doneColor+'">'+done+'/'+totalSt+'</td>'
       +'<td style="padding:10px 6px;font-size:10px;color:'+statusColor+'">'+statusText+'</td>'
       +'</tr>';
