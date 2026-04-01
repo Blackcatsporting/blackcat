@@ -1927,14 +1927,14 @@ function drawTrapperPick() {
       trapStation = parseInt(this.value);
       scoredSquadKeys = {};
       updateArrivalNote();
-      // Register trapper at this station
+      // Register trapper at their chosen station
       if(trapperName) updateStationStatus(trapStation+1, null, [], 'waiting');
       buildSquadList();
     };
   }
 
-  // Register trapper at current station
-  if(trapperName) updateStationStatus(trapStation+1, null, [], 'waiting');
+  // Only push status if trapper has explicitly selected a station (not default 0)
+  // Station 1 (index 0) is the default - only push if they've selected via dropdown
 
   updateArrivalNote();
 
