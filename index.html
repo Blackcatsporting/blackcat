@@ -870,13 +870,11 @@ function confirmTrapperName_unused(){
 }
 
 function switchToTrapper(){
-  // Clear all trapper state
   if(window._trapperRefreshTimer){ clearInterval(window._trapperRefreshTimer); window._trapperRefreshTimer=null; }
   localStorage.removeItem('ct_event_key');
   localStorage.removeItem('ct_squads');
   localStorage.removeItem('ct_active_session');
-  // Always force a clean reload
-  location.reload();
+  window.location.href = window.location.href.split('?')[0] + '?t=' + Date.now();
 }
 
 function setMode(mode) {
