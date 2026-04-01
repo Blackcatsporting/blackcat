@@ -870,26 +870,13 @@ function confirmTrapperName_unused(){
 }
 
 function switchToTrapper(){
-  // Show sign out button again
-  var signoutBtn = document.getElementById('tr-signout-btn');
-  if(signoutBtn) signoutBtn.style.display = 'block';
-  // Clear refresh timer
+  // Clear all trapper state
   if(window._trapperRefreshTimer){ clearInterval(window._trapperRefreshTimer); window._trapperRefreshTimer=null; }
-  // Clear stored event key and trapper state
   localStorage.removeItem('ct_event_key');
-  trapperName = '';
-  trapAssignedSquad = null;
-  trapStation = 0;
-  S.started = false; S.squads = []; S.shooters = [];
-  // Show startup overlay fresh
-  document.getElementById('startup-overlay').style.display = 'flex';
-  // Restore original startup content if it was replaced
-  var overlay = document.getElementById('startup-overlay');
-  if(!document.getElementById('trapper-name-inp')){
-    location.reload();
-    return;
-  }
-  document.getElementById('trapper-name-inp').value = '';
+  localStorage.removeItem('ct_squads');
+  localStorage.removeItem('ct_active_session');
+  // Always force a clean reload
+  location.reload();
 }
 
 function setMode(mode) {
