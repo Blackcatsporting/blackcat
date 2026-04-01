@@ -3257,7 +3257,7 @@ function renderBoardTable(status, log, totalStations){
       +'<td style="padding:10px 6px;font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--gold)">'+label+'</td>'
       +'<td style="padding:10px 6px;font-size:11px;color:var(--dim)">'+members.join(', ')+'</td>'
       +'<td style="padding:10px 6px;font-size:11px;color:var(--txt)">'+(info.trapper||'—')+'</td>'
-      +'<td style="padding:10px 6px;text-align:center;font-weight:500;font-size:16px;color:var(--txt)">'+(info.station||'—')+'</td>'
+      +'<td style="padding:10px 6px;text-align:center;font-weight:500;font-size:16px;color:var(--txt)">'+(complete?'—':(info.station||'—'))+'</td>'
       +'<td style="padding:10px 6px;text-align:center;font-size:12px;font-weight:700;color:'+doneColor+'">'+done+'/'+totalSt+'</td>'
       +'<td style="padding:10px 6px;font-size:10px;color:'+statusColor+'">'+statusText+'</td>'
       +'</tr>';
