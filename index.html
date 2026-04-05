@@ -157,6 +157,8 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 <div id="pg-setup" class="pg">
   <div class="card">
     <div class="ctitle">Event Setup</div>
+    <label class="lbl">Gun Club Name</label>
+    <input id="ev-club" class="inp" type="text" placeholder="Silverbrook Gun Club" style="margin-bottom:12px">
     <label class="lbl">Event Name</label>
     <input id="ev-name" class="inp" type="text" placeholder="Spring Classic">
     <div class="mt12">
@@ -1418,6 +1420,7 @@ function newEvent(){
   setEventType('SC');
 
   document.getElementById('ev-name').value='';
+  document.getElementById('ev-club').value='';
   document.getElementById('ev-birds').value='10';
   document.getElementById('ev-st').value='10';
   document.getElementById('paste-box').value='';
@@ -1445,6 +1448,7 @@ function startRound(){
   }
 
   S.name=n.toUpperCase();
+  S.club = (document.getElementById('ev-club').value.trim()||'').toUpperCase();
   S.stations=parseInt(document.getElementById('ev-st').value);
   S.birds=parseInt(document.getElementById('ev-birds').value);
 
@@ -2603,7 +2607,7 @@ function drawLeader(){
   var log = adminLog.length ? adminLog : JSON.parse(localStorage.getItem('ct_admin')||'[]');
   if(!log.length){em.style.display='block';bd.style.display='none';return;}
   em.style.display='none'; bd.style.display='block';
-  document.getElementById('lb-title').textContent=S.name?S.name.toUpperCase():'LIVE LEADERBOARD';
+  document.getElementById('lb-title').textContent=(S.club?S.club+' — ':'')+(S.name?S.name.toUpperCase():'LIVE LEADERBOARD');
 
   var totals={};
   log.forEach(function(r){
