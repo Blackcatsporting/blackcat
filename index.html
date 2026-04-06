@@ -158,7 +158,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
   <div class="card">
     <div class="ctitle">Event Setup</div>
     <label class="lbl">Gun Club Name</label>
-    <input id="ev-club" class="inp" type="text" placeholder="Silverbrook Gun Club" style="margin-bottom:12px">
+    <input id="ev-club" class="inp" type="text" placeholder="Silverbrook Gun Club" style="margin-bottom:12px" oninput="checkClubFormat(this.value)">
     <label class="lbl">Event Name</label>
     <input id="ev-name" class="inp" type="text" placeholder="Spring Classic">
     <div class="mt12">
@@ -197,9 +197,14 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
   </div>
   <div class="card">
     <div class="ctitle">📋 Import Shooters</div>
-    <div class="info">Paste names from anywhere — Scorechaser, email, notes, spreadsheet. One name per line, or comma separated, or Scorechaser format.</div>
+    <div class="info">Paste names from anywhere — registration software, email, notes, spreadsheet, or squad sheet format.</div>
+    <label class="lbl">Format</label>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button id="fmt-standard" onclick="setImportFormat('standard')" class="btn btn-gold" style="flex:1;padding:10px;font-size:12px">Standard</button>
+      <button id="fmt-squadsheet" onclick="setImportFormat('squadsheet')" class="btn btn-grey" style="flex:1;padding:10px;font-size:12px">Squad Sheet</button>
+    </div>
     <label class="lbl">Paste Data</label>
-    <textarea id="paste-box" class="inp ta" placeholder="Paste names from anywhere…&#10;&#10;Examples:&#10;John Smith&#10;Jane Doe, Bob Jones&#10;Or paste directly from Scorechaser"></textarea>
+    <textarea id="paste-box" class="inp ta" placeholder="Paste names from anywhere…&#10;&#10;Examples:&#10;John Smith&#10;Jane Doe, Bob Jones&#10;Or paste directly from registration software"></textarea>
     <div class="row mt8">
       <button class="btn btn-grey" onclick="previewPaste()">👁 Preview</button>
       <button class="btn btn-gold" onclick="importPaste()">✅ Import</button>
@@ -938,6 +943,62 @@ function toast(msg,type){
   setTimeout(function(){t.classList.remove('on');},2500);
 }
 
+var importFormat = 'standard';
+
+var SQUAD_SHEET_CLUBS = ['hudson farm', 'griffin & howe', 'griffin and howe'];
+
+function checkClubFormat(val){
+  var lower = val.toLowerCase().trim();
+  var isSquadSheet = SQUAD_SHEET_CLUBS.some(function(c){ return lower.indexOf(c) !== -1; });
+  setImportFormat(isSquadSheet ? 'squadsheet' : 'standard');
+}
+
+function setImportFormat(fmt){
+  importFormat = fmt;
+  document.getElementById('fmt-standard').className = fmt==='standard' ? 'btn btn-gold' : 'btn btn-grey';
+  document.getElementById('fmt-squadsheet').className = fmt==='squadsheet' ? 'btn btn-gold' : 'btn btn-grey';
+  var box = document.getElementById('paste-box');
+  if(fmt==='squadsheet'){
+    box.placeholder = 'Paste squad sheet data...\n\nExpected format:\n1  John Smith  12  N\n1  Jane Doe    20  Rental\n2  Bob Jones   12  3L12';
+  } else {
+    box.placeholder = 'Paste names from anywhere\u2026\n\nExamples:\nJohn Smith\nJane Doe, Bob Jones\nOr paste directly from registration software';
+  }
+}
+
+function parseSquadSheet(raw){
+  var squads = {};
+  var lines = raw.split('\n');
+  lines.forEach(function(line){
+    line = line.trim();
+    if(!line) return;
+    // Match lines starting with a team number: "1 John Smith 12 N" or "1  John Smith  12  N"
+    var m = line.match(/^(\d+)\s+([A-Za-z][^\d\t]+?)\s+(?:12|20|28|\.410)\s/);
+    if(!m) return;
+    var teamNum = parseInt(m[1]);
+    var name = m[2].trim();
+    // Extract gauge
+    var gaugeM = line.match(/\b(12|20|28|\.410)\b/);
+    var gauge = gaugeM ? gaugeM[1]+'ga' : '';
+    // Extract rental — N means own gun, anything else is rental
+    var parts = line.split(/\s+/);
+    var rental = '';
+    for(var i=parts.length-1; i>=0; i--){
+      if(parts[i].match(/^[NR]/i) || parts[i].match(/L12|R12|LL12/)){
+        rental = parts[i]==='N' ? '' : 'Rental';
+        break;
+      }
+    }
+    var displayName = name + (gauge ? ' ('+gauge+')' : '') + (rental ? ' — Rental' : '');
+    if(!squads[teamNum]) squads[teamNum] = [];
+    squads[teamNum].push(displayName);
+  });
+  var result = [];
+  Object.keys(squads).sort(function(a,b){ return parseInt(a)-parseInt(b); }).forEach(function(num){
+    result.push({ num: parseInt(num), label: String(num), members: squads[num], session: '' });
+  });
+  return result;
+}
+
 function parseSquads(raw) {
   var squads = [];
   var sessionLabel = '';
@@ -1023,11 +1084,10 @@ function changeAdminPin(){
 function previewPaste(){
   var raw = document.getElementById('paste-box').value;
   if(!raw.trim()){ toast('Paste something first'); return; }
-  var parsedSquads = parseSquads(raw);
+  var parsedSquads = importFormat==='squadsheet' ? parseSquadSheet(raw) : parseSquads(raw);
   var prev = document.getElementById('paste-prev');
   prev.style.display = 'flex';
   if(!parsedSquads.length){
-
     var lines = raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
     var info = 'No squads found. First 3 lines:\n';
     for(var i=0;i<Math.min(3,lines.length);i++){
@@ -1046,7 +1106,7 @@ function previewPaste(){
 function importPaste(){
   var raw = document.getElementById('paste-box').value;
   if(!raw.trim()){ toast('Nothing pasted!'); return; }
-  var parsedSquads = parseSquads(raw);
+  var parsedSquads = importFormat==='squadsheet' ? parseSquadSheet(raw) : parseSquads(raw);
   var added = 0;
 
   if(parsedSquads.length > 0){
