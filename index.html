@@ -967,30 +967,26 @@ function setImportFormat(fmt){
 
 function parseSquadSheet(raw){
   var squads = {};
-  var lines = raw.split('\n');
+  var lines = raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
   lines.forEach(function(line){
     line = line.trim();
     if(!line) return;
-    // Match lines starting with a team number: "1 John Smith 12 N" or "1  John Smith  12  N"
-    var m = line.match(/^(\d+)\s+([A-Za-z][^\d\t]+?)\s+(?:12|20|28|\.410)\s/);
+    // Match lines starting with a team number followed by a name
+    // Pattern: number, whitespace, name (letters/spaces), then gauge/other info
+    var m = line.match(/^(\d+)\s+([A-Za-z][A-Za-z\s\.\-\']+?)\s+(?:12|20|28|410)\b/);
     if(!m) return;
     var teamNum = parseInt(m[1]);
     var name = m[2].trim();
+    // Skip if name looks like a header
+    if(name.toLowerCase()==='shooter') return;
     // Extract gauge
-    var gaugeM = line.match(/\b(12|20|28|\.410)\b/);
+    var gaugeM = line.match(/\b(12|20|28|410)\b/);
     var gauge = gaugeM ? gaugeM[1]+'ga' : '';
-    // Extract rental — N means own gun, anything else is rental
-    var parts = line.split(/\s+/);
-    var rental = '';
-    for(var i=parts.length-1; i>=0; i--){
-      if(parts[i].match(/^[NR]/i) || parts[i].match(/L12|R12|LL12/)){
-        rental = parts[i]==='N' ? '' : 'Rental';
-        break;
-      }
-    }
-    var displayName = name + (gauge ? ' ('+gauge+')' : '') + (rental ? ' — Rental' : '');
+    // Build display name with gauge
+    var displayName = name + (gauge ? ' ('+gauge+')' : '');
     if(!squads[teamNum]) squads[teamNum] = [];
-    squads[teamNum].push(displayName);
+    // Only add if not already in squad
+    if(squads[teamNum].indexOf(displayName)===-1) squads[teamNum].push(displayName);
   });
   var result = [];
   Object.keys(squads).sort(function(a,b){ return parseInt(a)-parseInt(b); }).forEach(function(num){
