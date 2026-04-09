@@ -230,10 +230,11 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
   <div class="card" style="margin-top:14px">
     <div class="ctitle" style="color:var(--dim);font-size:16px">🔒 Admin PIN</div>
     <div style="display:flex;gap:10px;align-items:center">
-      <input id="new-pin-inp" class="inp" type="password" inputmode="numeric" maxlength="4" placeholder="New PIN" style="max-width:140px;font-size:20px;letter-spacing:4px;text-align:center">
-      <button class="btn btn-grey" onclick="changeAdminPin()" style="white-space:nowrap">Change PIN</button>
+      <input id="new-pin-inp" class="inp" type="password" inputmode="numeric" maxlength="4" placeholder="New PIN" style="max-width:140px;font-size:20px;letter-spacing:4px;text-align:center" disabled>
+      <button id="change-pin-btn" class="btn btn-grey" onclick="changeAdminPin()" style="white-space:nowrap;opacity:0.4;cursor:not-allowed" disabled>Change PIN</button>
     </div>
     <div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);margin-top:6px;letter-spacing:1px">Current PIN: <span id="current-pin-display">****</span></div>
+    <div id="pin-status-msg" style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);margin-top:4px;letter-spacing:1px">Start a round to enable PIN change</div>
   </div>
 
   <button class="btn btn-gold btn-full" onclick="startRound()" style="font-size:15px;padding:15px">🎯 Start Round</button>
@@ -602,7 +603,20 @@ function closePeekOverlay(){
 
 function checkPeekPin(){
   var pin = document.getElementById('peek-pin-inp').value;
-  var adminPin = localStorage.getItem('ct_admin_pin')||'0000';
+  // Check Firebase first, fall back to localStorage
+  var key = localStorage.getItem('ct_event_key')||'DEFAULT';
+  if(db){
+    db.ref(key+'/ct_admin_pin').once('value').then(function(snap){
+      var adminPin = snap.val() || localStorage.getItem('ct_admin_pin') || '0000';
+      if(snap.val()) localStorage.setItem('ct_admin_pin', snap.val());
+      _checkPinResult(pin, adminPin);
+    });
+  } else {
+    _checkPinResult(pin, localStorage.getItem('ct_admin_pin')||'0000');
+  }
+}
+
+function _checkPinResult(pin, adminPin){
   if(pin === adminPin){
     closePeekOverlay();
     // Show header and nav, go to admin tab
@@ -655,16 +669,27 @@ function showAdminPin(){
 
 function checkAdminPin(){
   var pin = document.getElementById('admin-pin-inp').value;
-  if(pin === '0000'){
-
-    var ov = document.querySelector('div[style*="999999"]');
-    if(ov) ov.remove();
-    startAsAdmin();
+  var key = localStorage.getItem('ct_event_key')||'DEFAULT';
+  function verifyPin(adminPin){
+    if(pin === adminPin){
+      var ov = document.querySelector('div[style*="999999"]');
+      if(ov) ov.remove();
+      startAsAdmin();
+    } else {
+      document.getElementById('admin-pin-inp').value = '';
+      document.getElementById('admin-pin-inp').style.borderColor = 'var(--miss)';
+      setTimeout(function(){ document.getElementById('admin-pin-inp').style.borderColor = ''; }, 1000);
+      toast('Incorrect PIN', '');
+    }
+  }
+  if(db && key !== 'DEFAULT'){
+    db.ref(key+'/ct_admin_pin').once('value').then(function(snap){
+      var adminPin = snap.val() || localStorage.getItem('ct_admin_pin') || '0000';
+      if(snap.val()) localStorage.setItem('ct_admin_pin', snap.val());
+      verifyPin(adminPin);
+    });
   } else {
-    document.getElementById('admin-pin-inp').value = '';
-    document.getElementById('admin-pin-inp').style.borderColor = 'var(--miss)';
-    setTimeout(function(){ document.getElementById('admin-pin-inp').style.borderColor = ''; }, 1000);
-    toast('Incorrect PIN', '');
+    verifyPin(localStorage.getItem('ct_admin_pin')||'0000');
   }
 }
 
@@ -1066,10 +1091,33 @@ function changeAdminPin(){
   var pin = inp.value.trim();
   if(pin.length < 4){ toast('PIN must be 4 digits'); return; }
   if(!/^\d{4}$/.test(pin)){ toast('PIN must be numbers only'); return; }
+  // Store in localStorage AND Firebase under event key
   localStorage.setItem('ct_admin_pin', pin);
+  if(db && S.started){
+    db.ref(getKey()+'/ct_admin_pin').set(pin);
+  }
   inp.value = '';
   document.getElementById('current-pin-display').textContent = pin;
   toast('PIN changed to ' + pin, 'green');
+}
+
+function unlockPinChange(){
+  var btn = document.getElementById('change-pin-btn');
+  var inp = document.getElementById('new-pin-inp');
+  var msg = document.getElementById('pin-status-msg');
+  if(btn){ btn.disabled=false; btn.style.opacity='1'; btn.style.cursor='pointer'; }
+  if(inp){ inp.disabled=false; }
+  if(msg){ msg.textContent='PIN is tied to this event code: '+getKey(); }
+  // Load PIN from Firebase if available
+  if(db){
+    db.ref(getKey()+'/ct_admin_pin').once('value').then(function(snap){
+      if(snap.val()){
+        localStorage.setItem('ct_admin_pin', snap.val());
+        var disp = document.getElementById('current-pin-display');
+        if(disp) disp.textContent = snap.val();
+      }
+    });
+  }
 }
 
 function previewPaste(){
@@ -1542,6 +1590,8 @@ function startRound(){
   toast('Round started!','green');
   // Restart all Firebase listeners with correct event key
   restartFirebaseListeners();
+  // Unlock PIN change now that event is active
+  unlockPinChange();
   go('squads');
 }
 
