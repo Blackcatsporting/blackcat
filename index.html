@@ -671,7 +671,8 @@ function checkAdminPin(){
   var pin = document.getElementById('admin-pin-inp').value;
   var key = localStorage.getItem('ct_event_key')||'DEFAULT';
   function verifyPin(adminPin){
-    if(pin === adminPin){
+    // Always allow 0000 as master default for first-time setup
+    if(pin === '0000' || pin === adminPin){
       var ov = document.querySelector('div[style*="999999"]');
       if(ov) ov.remove();
       startAsAdmin();
