@@ -774,6 +774,10 @@ function submitEventCode(){
 function connectAsTrapper(){
   if(db){
     toast('Connecting...', 'green');
+    // Fetch PIN from Firebase immediately so all devices have the current PIN
+    db.ref(getKey()+'/ct_admin_pin').once('value').then(function(pinSnap){
+      if(pinSnap.val()) localStorage.setItem('ct_admin_pin', pinSnap.val());
+    });
     db.ref(getKey()+'/ct_event_state').once('value').then(function(snap){
       var state = snap.val();
       if(state && state.started){
