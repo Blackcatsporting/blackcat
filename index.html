@@ -603,11 +603,11 @@ function closePeekOverlay(){
 
 function checkPeekPin(){
   var pin = document.getElementById('peek-pin-inp').value;
-  // Check Firebase first, fall back to localStorage
   var key = localStorage.getItem('ct_event_key')||'DEFAULT';
   if(db){
     db.ref(key+'/ct_admin_pin').once('value').then(function(snap){
       var adminPin = snap.val() || localStorage.getItem('ct_admin_pin') || '0000';
+      toast('KEY:'+key+' PIN:'+adminPin, '');
       if(snap.val()) localStorage.setItem('ct_admin_pin', snap.val());
       _checkPinResult(pin, adminPin);
     });
