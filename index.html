@@ -2762,11 +2762,19 @@ function trapSubmit() {
   var squadDone = trapScoredCount >= (S.squads[trapSquadIdx] ? S.squads[trapSquadIdx].members.length : 1);
   if(squadDone){
     var currentLabel = S.squads[trapSquadIdx] ? String(S.squads[trapSquadIdx].label||S.squads[trapSquadIdx].num) : '1';
-    // Mark squad as scored so it disappears from the list
-    var sqKey = currentLabel + '_' + trapStation;
-    scoredSquadKeys[sqKey] = true;
-    updateStationStatus(trapStation+1, currentLabel, [], 'waiting');
-    scoreCurrentMember();
+    if(S.eventType === '5STAND'){
+      // For 5-Stand: reset count and call handler directly
+      trapScoredCount = 0;
+      trapMemberIdx = 0;
+      var sq5 = S.squads[trapSquadIdx];
+      handle5StandStationComplete(sq5);
+    } else {
+      // For sporting clays: mark squad scored and continue
+      var sqKey = currentLabel + '_' + trapStation;
+      scoredSquadKeys[sqKey] = true;
+      updateStationStatus(trapStation+1, currentLabel, [], 'waiting');
+      scoreCurrentMember();
+    }
   } else {
     scoreCurrentMember();
   }
