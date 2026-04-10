@@ -1040,8 +1040,8 @@ function parseSquads(raw) {
       }
       if(line.indexOf('/') > -1){
         sessionLabel = line.split('/')[0].replace(/\s*[\u2014\-]+\s*FIELD.*$/i,'').trim();
-        // For 5-Stand: use time as squad label
-        if(S.eventType==='5STAND') currentLabel = sessionLabel;
+        // For 5-Stand: use full time line as squad label
+        if(S.eventType==='5STAND') currentLabel = line.trim();
       } else {
         sessionLabel = line.replace(/\s*[\u2014\-]+\s*/g,' - ').trim();
         if(S.eventType==='5STAND') currentLabel = sessionLabel;
