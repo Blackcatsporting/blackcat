@@ -3889,9 +3889,7 @@ function exportPDF(){
   var numSt = S.started ? S.stations : 10;
   var date = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
-  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <meta name="version" content="999">'
-    +'<title>'+( S.name||'BLACK CAT')+'</title>'
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+(S.name||'BLACK CAT')+'</title>'
     +'<style>'
     +'body{font-family:Arial,sans-serif;margin:20px;color:#000}'
     +'h1{font-size:28px;margin:0}h2{font-size:16px;color:#666;margin:4px 0 20px}'
