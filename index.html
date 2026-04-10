@@ -2781,6 +2781,7 @@ function trapSubmit() {
 
   // Check if entire squad is done at this station
   var squadDone = trapScoredCount >= (S.squads[trapSquadIdx] ? S.squads[trapSquadIdx].members.length : 1);
+  toast('type:'+S.eventType+' done:'+squadDone+' count:'+trapScoredCount, '');
   if(squadDone){
     var currentLabel = S.squads[trapSquadIdx] ? String(S.squads[trapSquadIdx].label||S.squads[trapSquadIdx].num) : '1';
     if(S.eventType === '5STAND'){
