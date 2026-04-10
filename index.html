@@ -2076,10 +2076,11 @@ function fiveStandScoreNext(){
   document.getElementById('tr-squad-label').textContent = 'ROUND '+fs.round+' — STAND '+(fs.stand+1)+' — SHOOTER '+(fs.scored+1)+' OF '+members.length;
   document.getElementById('tr-progress').textContent = shooterName;
   document.getElementById('tr-name').textContent = shooterName;
-  document.getElementById('tr-submit-btn').onclick = function(){ fiveStandSubmit(); };
   
   trShow('scoring');
   buildTrapperBirds();
+  // Override submit button AFTER buildTrapperBirds
+  document.getElementById('tr-submit-btn').onclick = function(){ fiveStandSubmit(); };
 }
 
 function fiveStandSubmit(){
