@@ -789,7 +789,7 @@ function connectAsTrapper(){
         S.birds        = state.birds;
         S.stationBirds = state.stationBirds;
         S.shooters     = state.shooters;
-        if(!S.eventType) S.eventType = state.eventType || 'SC';
+        S.eventType    = state.eventType || 'SC';
       } else {
         toast('Waiting for admin to start event...', '');
       }
@@ -2773,9 +2773,6 @@ function trapSubmit() {
   localStorage.setItem('ct_admin', JSON.stringify(adminLog));
   fbPushAdminLog(adminLog);
   toast(trapShooter + ' submitted!', 'green');
-  // Debug - show in squad label
-  var dbgEl = document.getElementById('tr-squad-label');
-  if(dbgEl) dbgEl.textContent = 'type:'+S.eventType+' st:'+trapStation+' cnt:'+trapScoredCount+' mems:'+(S.squads[trapSquadIdx]?S.squads[trapSquadIdx].members.length:'?');
 
   drawRotationBoard();
 
