@@ -1034,17 +1034,31 @@ function parseSquads(raw) {
     if(!line || line === 'No Entrants') return;
 
     if(/\d+:\d+\s*(AM|PM)/i.test(line)){
+      if(S.eventType==='5STAND'){
+        // For 5-Stand: accumulate time lines to build full label (Field 1 / Field 2)
+        if(!window._5standTimeBuffer) window._5standTimeBuffer = [];
+        window._5standTimeBuffer.push(line.trim());
+        // If this line contains both fields (has /), flush immediately
+        if(line.indexOf('/')>-1 || window._5standTimeBuffer.length>=2){
+          var fullLabel = window._5standTimeBuffer.join(' / ');
+          window._5standTimeBuffer = [];
+          if(currentLabel !== null && currentMembers.length > 0){
+            squads.push({label:String(currentLabel), session:sessionLabel, num:parseInt(currentLabel)||autoNum, members:currentMembers.slice()});
+            currentMembers = []; autoNum++;
+          }
+          currentLabel = fullLabel;
+          sessionLabel = fullLabel;
+        }
+        return;
+      }
       if(currentLabel !== null && currentMembers.length > 0){
         squads.push({label:String(currentLabel), session:sessionLabel, num:parseInt(currentLabel)||autoNum, members:currentMembers.slice()});
         currentMembers = []; currentLabel = null; autoNum++;
       }
       if(line.indexOf('/') > -1){
         sessionLabel = line.split('/')[0].replace(/\s*[\u2014\-]+\s*FIELD.*$/i,'').trim();
-        // For 5-Stand: use full time line as squad label
-        if(S.eventType==='5STAND') currentLabel = line.trim();
       } else {
         sessionLabel = line.replace(/\s*[\u2014\-]+\s*/g,' - ').trim();
-        if(S.eventType==='5STAND') currentLabel = sessionLabel;
       }
       return;
     }
