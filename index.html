@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+  <meta name="version" content="999">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -728,7 +729,7 @@ function confirmTrapperName() {
     return; 
   }
   trapperName = name;
-  S.eventType = trapperEventType;
+  // Event type will be set from Firebase when connecting - don't override here
 
   // Replace startup overlay content with event code input
   var overlay = document.getElementById('startup-overlay');
@@ -1077,6 +1078,11 @@ function parseSquads(raw) {
 
     var squadLine = line.match(/^(\d+[AB]?)\s*([A-Z].*)/);
     if(squadLine && /[A-Z][a-z]/.test(squadLine[2])){
+      if(S.eventType==='5STAND'){
+        // Don't reset label — just add name to current squad
+        currentMembers.push(squadLine[2].trim());
+        return;
+      }
       if(currentLabel !== null && currentMembers.length > 0){
         squads.push({label:String(currentLabel), session:sessionLabel, num:parseInt(currentLabel)||autoNum, members:currentMembers.slice()});
         currentMembers = []; autoNum++;
@@ -3195,7 +3201,7 @@ function setActiveSession(sess){
   toast(sess ? 'Active: '+sess : 'No session active', 'green');
 
   var trapScreen = document.getElementById('tr-screen-squads');
-  if(trapScreen && trapScreen.style.display !== 'none'){
+  if(trapScreen && trapScreen.style.display !== 'none' && S.eventType !== '5STAND'){
     scoredSquadKeys = {};
     buildSquadList();
   }
@@ -3885,7 +3891,8 @@ function exportPDF(){
   var numSt = S.started ? S.stations : 10;
   var date = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
-  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <meta name="version" content="999">'
     +'<title>'+( S.name||'BLACK CAT')+'</title>'
     +'<style>'
     +'body{font-family:Arial,sans-serif;margin:20px;color:#000}'
@@ -4514,7 +4521,8 @@ setInterval(function(){
         var sel = document.getElementById('active-session-sel');
         if(sel) sel.value = sess;
         var trapScreen = document.getElementById('tr-screen-squads');
-        if(trapScreen && trapScreen.style.display !== 'none'){
+        // Don't interrupt 5-Stand mid-scoring
+        if(trapScreen && trapScreen.style.display !== 'none' && S.eventType !== '5STAND'){
           scoredSquadKeys = {};
           buildSquadList();
         }
