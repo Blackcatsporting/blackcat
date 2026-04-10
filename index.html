@@ -2784,7 +2784,6 @@ function trapSubmit() {
 
   trapMemberIdx++;
   trapScoredCount++;
-  toast('ET:'+S.eventType+' cnt:'+trapScoredCount+' ml:'+(S.squads[trapSquadIdx]?S.squads[trapSquadIdx].members.length:'?'),'');
 
   // Check if entire squad is done at this station
   var squadDone = trapScoredCount >= (S.squads[trapSquadIdx] ? S.squads[trapSquadIdx].members.length : 1);
