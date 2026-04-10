@@ -2297,45 +2297,46 @@ function handle5StandStationComplete(squad){
   var members = squad.members||[];
   var squadLabel = squad.label||squad.num;
   var el = document.getElementById('tr-squad-list');
+  var birdsPerStand = S.stationBirds[trapStation]||S.birds||5;
 
-  // Build rotation summary — scores at THIS stand
-  var log = JSON.parse(localStorage.getItem('ct_admin')||'[]');
-  var standScores = {};
-  members.forEach(function(m){ standScores[m] = 0; });
-  log.forEach(function(r){
-    if(r.fiveStandRound === fiveStandRound && r.station === trapStation){
-      var k = r.shooter.trim().toLowerCase();
-      members.forEach(function(m){
-        if(m.trim().toLowerCase()===k) standScores[m] = (standScores[m]||0) + r.dead;
-      });
-    }
-  });
+  // Use adminLog in memory (most current)
+  var log = adminLog.length ? adminLog : JSON.parse(localStorage.getItem('ct_admin')||'[]');
 
-  // Check if all stands done for this field
+  // Mark current stand as done for this field
+  var standKey = 'fs_'+squadLabel+'_st'+trapStation+'_f'+fiveStandRound;
+  scoredSquadKeys[standKey] = true;
+
+  // Count how many stands done this field
   var standsCompletedThisField = 0;
   for(var si=0; si<S.stations; si++){
-    var sKey = squadLabel+'_'+si+'_r'+fiveStandRound;
-    if(scoredSquadKeys[sKey]) standsCompletedThisField++;
+    if(scoredSquadKeys['fs_'+squadLabel+'_st'+si+'_f'+fiveStandRound]) standsCompletedThisField++;
   }
-  // Mark current stand as done
-  scoredSquadKeys[squadLabel+'_'+trapStation+'_r'+fiveStandRound] = true;
-  standsCompletedThisField++;
+
+  // Build scores for THIS stand from log
+  var standScores = {};
+  members.forEach(function(m){ standScores[m.trim().toLowerCase()] = 0; });
+  log.forEach(function(r){
+    if(r.fiveStandRound === fiveStandRound && r.station === trapStation){
+      var k = r.shooter ? r.shooter.trim().toLowerCase() : '';
+      if(standScores.hasOwnProperty(k)) standScores[k] += r.dead;
+    }
+  });
 
   var allStandsDone = standsCompletedThisField >= S.stations;
 
   if(!allStandsDone){
-    // Show rotation summary then rotate button
+    // Show rotation summary
     var nextStand = (trapStation + 1) % S.stations;
     var summaryHTML = '<div style="text-align:center;padding:30px 20px">'
       +'<div style="font-family:Bebas Neue,sans-serif;font-size:26px;color:var(--hit);letter-spacing:2px;margin-bottom:6px">&#10003; STAND '+(trapStation+1)+' COMPLETE</div>'
-      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">FIELD '+fiveStandRound+' — STAND '+(standsCompletedThisField)+' OF '+S.stations+'</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">FIELD '+fiveStandRound+' — '+standsCompletedThisField+' OF '+S.stations+' STANDS</div>'
       +'<div style="background:var(--surf2);border-radius:10px;padding:16px;margin-bottom:20px;text-align:left">';
     members.forEach(function(m){
       var firstName = m.split(' ')[0];
-      var score = standScores[m]||0;
-      summaryHTML += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:13px">'
+      var score = standScores[m.trim().toLowerCase()]||0;
+      summaryHTML += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:14px">'
         +'<span style="color:var(--txt)">'+firstName+'</span>'
-        +'<span style="color:var(--gold);font-weight:700">'+score+'/'+S.stationBirds[trapStation]+'</span>'
+        +'<span style="color:var(--gold);font-weight:700">'+score+'/'+birdsPerStand+'</span>'
         +'</div>';
     });
     summaryHTML += '</div>'
@@ -2345,27 +2346,27 @@ function handle5StandStationComplete(squad){
     trShow('squads');
 
   } else if(fiveStandRound === 1){
-    // Field 1 complete — show field totals, start Field 2
+    // Field 1 complete — build field totals from log
     var fieldTotals = {};
-    members.forEach(function(m){ fieldTotals[m]=0; });
+    members.forEach(function(m){ fieldTotals[m.trim().toLowerCase()] = 0; });
     log.forEach(function(r){
       if(r.fiveStandRound===1){
-        var k=r.shooter.trim().toLowerCase();
-        members.forEach(function(m){ if(m.trim().toLowerCase()===k) fieldTotals[m]+=r.dead; });
+        var k = r.shooter ? r.shooter.trim().toLowerCase() : '';
+        if(fieldTotals.hasOwnProperty(k)) fieldTotals[k] += r.dead;
       }
     });
-    // Add current stand scores
-    members.forEach(function(m){ fieldTotals[m]=(fieldTotals[m]||0)+(standScores[m]||0); });
 
+    var maxBirds = S.stations * birdsPerStand;
     var f1HTML = '<div style="text-align:center;padding:30px 20px">'
       +'<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:6px">&#10003; FIELD 1 COMPLETE</div>'
-      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">FIELD 1 TOTALS — '+S.stations*S.birds+' BIRDS</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">'+maxBirds+' BIRDS</div>'
       +'<div style="background:var(--surf2);border-radius:10px;padding:16px;margin-bottom:20px;text-align:left">';
     members.forEach(function(m){
       var firstName = m.split(' ')[0];
+      var score = fieldTotals[m.trim().toLowerCase()]||0;
       f1HTML += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:14px">'
         +'<span style="color:var(--txt)">'+firstName+'</span>'
-        +'<span style="color:var(--gold);font-weight:700">'+(fieldTotals[m]||0)+'/'+(S.stations*S.birds)+'</span>'
+        +'<span style="color:var(--gold);font-weight:700">'+score+'/'+maxBirds+'</span>'
         +'</div>';
     });
     f1HTML += '</div>'
@@ -2376,37 +2377,34 @@ function handle5StandStationComplete(squad){
 
   } else {
     // Field 2 complete — show final totals
-    var finalTotals = {};
-    members.forEach(function(m){ finalTotals[m]={f1:0,f2:0}; });
+    var f1Totals = {};
+    var f2Totals = {};
+    members.forEach(function(m){ f1Totals[m.trim().toLowerCase()]=0; f2Totals[m.trim().toLowerCase()]=0; });
     log.forEach(function(r){
-      var k=r.shooter.trim().toLowerCase();
-      members.forEach(function(m){
-        if(m.trim().toLowerCase()===k){
-          if(r.fiveStandRound===1) finalTotals[m].f1+=r.dead;
-          else if(r.fiveStandRound===2) finalTotals[m].f2+=r.dead;
-        }
-      });
+      var k = r.shooter ? r.shooter.trim().toLowerCase() : '';
+      if(f1Totals.hasOwnProperty(k)){
+        if(r.fiveStandRound===1) f1Totals[k]+=r.dead;
+        else if(r.fiveStandRound===2) f2Totals[k]+=r.dead;
+      }
     });
-    // Add current stand scores to field 2
-    members.forEach(function(m){ finalTotals[m].f2+=(standScores[m]||0); });
 
-    var maxBirds = S.stations * S.birds;
+    var maxBirdsField = S.stations * birdsPerStand;
     var finalHTML = '<div style="text-align:center;padding:30px 20px">'
-      +'<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:6px">&#10003; COMPLETE</div>'
-      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">FINAL TOTALS — '+(maxBirds*2)+' BIRDS</div>'
-      +'<div style="background:var(--surf2);border-radius:10px;padding:16px;margin-bottom:20px;text-align:left">'
-      +'<div style="display:flex;justify-content:space-between;padding:4px 0;margin-bottom:8px;font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px">'
-      +'<span>SHOOTER</span><span>FIELD 1</span><span>FIELD 2</span><span>TOTAL</span></div>';
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:6px">&#10003; ALL DONE</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">FINAL TOTALS — '+(maxBirdsField*2)+' BIRDS</div>'
+      +'<div style="background:var(--surf2);border-radius:10px;padding:16px;margin-bottom:20px">'
+      +'<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:4px;padding:4px 0 8px;border-bottom:1px solid var(--bdr);font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px">'
+      +'<div>SHOOTER</div><div style="text-align:center">FIELD 1</div><div style="text-align:center">FIELD 2</div><div style="text-align:right">TOTAL</div></div>';
     members.forEach(function(m){
       var firstName = m.split(' ')[0];
-      var f1 = finalTotals[m].f1||0;
-      var f2 = finalTotals[m].f2||0;
-      var total = f1+f2;
-      finalHTML += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:13px">'
-        +'<span style="color:var(--txt);flex:2">'+firstName+'</span>'
-        +'<span style="color:var(--dim);flex:1;text-align:center">'+f1+'/'+maxBirds+'</span>'
-        +'<span style="color:var(--dim);flex:1;text-align:center">'+f2+'/'+maxBirds+'</span>'
-        +'<span style="color:var(--gold);font-weight:700;flex:1;text-align:right">'+total+'/'+(maxBirds*2)+'</span>'
+      var k = m.trim().toLowerCase();
+      var f1 = f1Totals[k]||0;
+      var f2 = f2Totals[k]||0;
+      finalHTML += '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:4px;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:13px">'
+        +'<div style="color:var(--txt)">'+firstName+'</div>'
+        +'<div style="color:var(--dim);text-align:center">'+f1+'/'+maxBirdsField+'</div>'
+        +'<div style="color:var(--dim);text-align:center">'+f2+'/'+maxBirdsField+'</div>'
+        +'<div style="color:var(--gold);font-weight:700;text-align:right">'+(f1+f2)+'/'+(maxBirdsField*2)+'</div>'
         +'</div>';
     });
     finalHTML += '</div>'
@@ -2417,6 +2415,7 @@ function handle5StandStationComplete(squad){
     fiveStandRound = 1;
   }
 }
+
 
 function fiveStandRotate(nextStand){
   trapStation = nextStand;
