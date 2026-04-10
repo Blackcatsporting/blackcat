@@ -2050,10 +2050,20 @@ function fiveStandPickFirst(){
     +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">WHO IS SHOOTING FIRST?</div>'
     +'</div>';
   squad.members.forEach(function(name, i){
-    html += '<button onclick="fiveStandSetFirst('+i+')" style="display:block;width:100%;text-align:left;background:var(--surf);border:3px solid var(--gold);border-radius:10px;padding:20px 18px;margin-bottom:12px;font-size:22px;font-weight:700;color:var(--txt);cursor:pointer;font-family:DM Sans,sans-serif">'+name+'</button>';
+    html += '<button onclick="fiveStandSetFirst('+i+')" style="display:block;width:100%;text-align:left;background:var(--surf);border:3px solid var(--gold);border-radius:10px;padding:20px 18px;margin-bottom:12px;font-size:22px;font-weight:700;color:var(--txt);cursor:pointer;font-family:DM Sans,sans-serif;-webkit-tap-highlight-color:transparent">'+name+'</button>';
   });
   el.innerHTML = html;
   trShow('squads');
+  // Attach touch handlers after rendering
+  setTimeout(function(){
+    var btns = el.querySelectorAll('button');
+    btns.forEach(function(btn, i){
+      btn.addEventListener('touchend', function(e){
+        e.preventDefault();
+        fiveStandSetFirst(i);
+      });
+    });
+  }, 100);
 }
 
 function fiveStandSetFirst(startIdx){
