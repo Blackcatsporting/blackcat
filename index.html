@@ -1036,18 +1036,23 @@ function parseSquads(raw) {
     if(/\d+:\d+\s*(AM|PM)/i.test(line)){
       if(currentLabel !== null && currentMembers.length > 0){
         squads.push({label:String(currentLabel), session:sessionLabel, num:parseInt(currentLabel)||autoNum, members:currentMembers.slice()});
-        currentMembers = []; currentLabel = null;
+        currentMembers = []; currentLabel = null; autoNum++;
       }
       if(line.indexOf('/') > -1){
-        sessionLabel = line.split('/')[0].replace(/\s*[\u2014\-]+\s*PAR.*$/i,'').trim();
+        sessionLabel = line.split('/')[0].replace(/\s*[\u2014\-]+\s*FIELD.*$/i,'').trim();
+        // For 5-Stand: use time as squad label
+        if(S.eventType==='5STAND') currentLabel = sessionLabel;
       } else {
         sessionLabel = line.replace(/\s*[\u2014\-]+\s*/g,' - ').trim();
+        if(S.eventType==='5STAND') currentLabel = sessionLabel;
       }
       return;
     }
 
     var squadOnly = line.match(/^(\d+[AB]?)$/);
     if(squadOnly){
+      // For 5-Stand, skip the squad number — time slot is already the label
+      if(S.eventType==='5STAND') return;
       if(currentLabel !== null && currentMembers.length > 0){
         squads.push({label:String(currentLabel), session:sessionLabel, num:parseInt(currentLabel)||autoNum, members:currentMembers.slice()});
         currentMembers = []; autoNum++;
@@ -2288,6 +2293,154 @@ function startScoringSquad(squadIdx, keepStation) {
 }
 
 // Show the current member's scoring screen
+function handle5StandStationComplete(squad){
+  var members = squad.members||[];
+  var squadLabel = squad.label||squad.num;
+  var el = document.getElementById('tr-squad-list');
+
+  // Build rotation summary — scores at THIS stand
+  var log = JSON.parse(localStorage.getItem('ct_admin')||'[]');
+  var standScores = {};
+  members.forEach(function(m){ standScores[m] = 0; });
+  log.forEach(function(r){
+    if(r.fiveStandRound === fiveStandRound && r.station === trapStation){
+      var k = r.shooter.trim().toLowerCase();
+      members.forEach(function(m){
+        if(m.trim().toLowerCase()===k) standScores[m] = (standScores[m]||0) + r.dead;
+      });
+    }
+  });
+
+  // Check if all stands done for this field
+  var standsCompletedThisField = 0;
+  for(var si=0; si<S.stations; si++){
+    var sKey = squadLabel+'_'+si+'_r'+fiveStandRound;
+    if(scoredSquadKeys[sKey]) standsCompletedThisField++;
+  }
+  // Mark current stand as done
+  scoredSquadKeys[squadLabel+'_'+trapStation+'_r'+fiveStandRound] = true;
+  standsCompletedThisField++;
+
+  var allStandsDone = standsCompletedThisField >= S.stations;
+
+  if(!allStandsDone){
+    // Show rotation summary then rotate button
+    var nextStand = (trapStation + 1) % S.stations;
+    var summaryHTML = '<div style="text-align:center;padding:30px 20px">'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:26px;color:var(--hit);letter-spacing:2px;margin-bottom:6px">&#10003; STAND '+(trapStation+1)+' COMPLETE</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">FIELD '+fiveStandRound+' — STAND '+(standsCompletedThisField)+' OF '+S.stations+'</div>'
+      +'<div style="background:var(--surf2);border-radius:10px;padding:16px;margin-bottom:20px;text-align:left">';
+    members.forEach(function(m){
+      var firstName = m.split(' ')[0];
+      var score = standScores[m]||0;
+      summaryHTML += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:13px">'
+        +'<span style="color:var(--txt)">'+firstName+'</span>'
+        +'<span style="color:var(--gold);font-weight:700">'+score+'/'+S.stationBirds[trapStation]+'</span>'
+        +'</div>';
+    });
+    summaryHTML += '</div>'
+      +'<button onclick="fiveStandRotate('+nextStand+')" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; ROTATE TO STAND '+(nextStand+1)+'</button>'
+      +'</div>';
+    el.innerHTML = summaryHTML;
+    trShow('squads');
+
+  } else if(fiveStandRound === 1){
+    // Field 1 complete — show field totals, start Field 2
+    var fieldTotals = {};
+    members.forEach(function(m){ fieldTotals[m]=0; });
+    log.forEach(function(r){
+      if(r.fiveStandRound===1){
+        var k=r.shooter.trim().toLowerCase();
+        members.forEach(function(m){ if(m.trim().toLowerCase()===k) fieldTotals[m]+=r.dead; });
+      }
+    });
+    // Add current stand scores
+    members.forEach(function(m){ fieldTotals[m]=(fieldTotals[m]||0)+(standScores[m]||0); });
+
+    var f1HTML = '<div style="text-align:center;padding:30px 20px">'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:6px">&#10003; FIELD 1 COMPLETE</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">FIELD 1 TOTALS — '+S.stations*S.birds+' BIRDS</div>'
+      +'<div style="background:var(--surf2);border-radius:10px;padding:16px;margin-bottom:20px;text-align:left">';
+    members.forEach(function(m){
+      var firstName = m.split(' ')[0];
+      f1HTML += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:14px">'
+        +'<span style="color:var(--txt)">'+firstName+'</span>'
+        +'<span style="color:var(--gold);font-weight:700">'+(fieldTotals[m]||0)+'/'+(S.stations*S.birds)+'</span>'
+        +'</div>';
+    });
+    f1HTML += '</div>'
+      +'<button onclick="fiveStandStartField2()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; START FIELD 2</button>'
+      +'</div>';
+    el.innerHTML = f1HTML;
+    trShow('squads');
+
+  } else {
+    // Field 2 complete — show final totals
+    var finalTotals = {};
+    members.forEach(function(m){ finalTotals[m]={f1:0,f2:0}; });
+    log.forEach(function(r){
+      var k=r.shooter.trim().toLowerCase();
+      members.forEach(function(m){
+        if(m.trim().toLowerCase()===k){
+          if(r.fiveStandRound===1) finalTotals[m].f1+=r.dead;
+          else if(r.fiveStandRound===2) finalTotals[m].f2+=r.dead;
+        }
+      });
+    });
+    // Add current stand scores to field 2
+    members.forEach(function(m){ finalTotals[m].f2+=(standScores[m]||0); });
+
+    var maxBirds = S.stations * S.birds;
+    var finalHTML = '<div style="text-align:center;padding:30px 20px">'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:6px">&#10003; COMPLETE</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">FINAL TOTALS — '+(maxBirds*2)+' BIRDS</div>'
+      +'<div style="background:var(--surf2);border-radius:10px;padding:16px;margin-bottom:20px;text-align:left">'
+      +'<div style="display:flex;justify-content:space-between;padding:4px 0;margin-bottom:8px;font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px">'
+      +'<span>SHOOTER</span><span>FIELD 1</span><span>FIELD 2</span><span>TOTAL</span></div>';
+    members.forEach(function(m){
+      var firstName = m.split(' ')[0];
+      var f1 = finalTotals[m].f1||0;
+      var f2 = finalTotals[m].f2||0;
+      var total = f1+f2;
+      finalHTML += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:13px">'
+        +'<span style="color:var(--txt);flex:2">'+firstName+'</span>'
+        +'<span style="color:var(--dim);flex:1;text-align:center">'+f1+'/'+maxBirds+'</span>'
+        +'<span style="color:var(--dim);flex:1;text-align:center">'+f2+'/'+maxBirds+'</span>'
+        +'<span style="color:var(--gold);font-weight:700;flex:1;text-align:right">'+total+'/'+(maxBirds*2)+'</span>'
+        +'</div>';
+    });
+    finalHTML += '</div>'
+      +'<button onclick="switchToTrapper()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer">&#8617; SIGN OUT</button>'
+      +'</div>';
+    el.innerHTML = finalHTML;
+    trShow('squads');
+    fiveStandRound = 1;
+  }
+}
+
+function fiveStandRotate(nextStand){
+  trapStation = nextStand;
+  trapScoredCount = 0;
+  trapMemberIdx = 0;
+  var stSel = document.getElementById('tr-st');
+  if(stSel) stSel.value = String(trapStation);
+  updateStationStatus(trapStation+1, trapAssignedSquad||null, [], 'waiting');
+  buildSquadList();
+}
+
+function fiveStandStartField2(){
+  fiveStandRound = 2;
+  trapStation = 0;
+  trapScoredCount = 0;
+  trapMemberIdx = 0;
+  scoredSquadKeys = {};
+  var stSel = document.getElementById('tr-st');
+  if(stSel) stSel.value = '0';
+  updateStationStatus(1, trapAssignedSquad||null, [], 'waiting');
+  buildSquadList();
+  toast('Field 2 — Stand 1', 'green');
+}
+
 function scoreCurrentMember() {
 
   var deadBtn = document.getElementById('tr-dead-btn');
@@ -2315,26 +2468,8 @@ function scoreCurrentMember() {
     trapSquadIdx = -1;
 
     if(S.eventType === '5STAND') {
-      var allStandsDone = true;
-      for(var si=0; si<S.stations; si++){
-        var sKey = (squad.label||squad.num) + '_' + si;
-        if(!scoredSquadKeys[sKey]){ allStandsDone=false; break; }
-      }
-      if(allStandsDone && fiveStandRound === 1){
-
-        fiveStandRound = 2;
-        scoredSquadKeys = {};
-        trShow('squads');
-        buildSquadList();
-        toast('Round 1 complete! Starting Round 2...', 'green');
-        return;
-      } else if(allStandsDone && fiveStandRound === 2){
-        fiveStandRound = 1;
-        trShow('squads');
-        buildSquadList();
-        toast('Squad ' + (squad.label||squad.num) + ' complete! 50 birds done.', 'green');
-        return;
-      }
+      handle5StandStationComplete(squad);
+      return;
     }
 
     trShow('squads');
