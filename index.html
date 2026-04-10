@@ -2773,7 +2773,9 @@ function trapSubmit() {
   localStorage.setItem('ct_admin', JSON.stringify(adminLog));
   fbPushAdminLog(adminLog);
   toast(trapShooter + ' submitted!', 'green');
-  toast('type:'+S.eventType+' st:'+trapStation+' cnt:'+trapScoredCount, '');
+  // Debug - show in squad label
+  var dbgEl = document.getElementById('tr-squad-label');
+  if(dbgEl) dbgEl.textContent = 'type:'+S.eventType+' st:'+trapStation+' cnt:'+trapScoredCount+' mems:'+(S.squads[trapSquadIdx]?S.squads[trapSquadIdx].members.length:'?');
 
   drawRotationBoard();
 
