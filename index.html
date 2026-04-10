@@ -1309,8 +1309,14 @@ function addManualSquad(){
 
 function removeManualSquad(idx){
   manualSquads.splice(idx, 1);
-
   manualSquads.forEach(function(sq, i){ sq.label = String(i+1); });
+  // Update localStorage and Firebase
+  S.squads = manualSquads.slice();
+  localStorage.setItem('ct_squads', JSON.stringify(S.squads));
+  if(db && S.started){
+    var key = localStorage.getItem('ct_event_key')||'DEFAULT';
+    db.ref(key+'/ct_squads').set(S.squads);
+  }
   renderManualSquads();
 }
 
@@ -2013,6 +2019,208 @@ function updateArrivalNote() {
 }
 
 // Called when trapper tab opens
+// ═══════════════════════════════════════════════
+// 5-STAND ENGINE - completely separate from SC
+// ═══════════════════════════════════════════════
+var fs = {
+  squadIdx: -1,
+  round: 1,       // 1 or 2
+  stand: 0,       // 0-4
+  shooterIdx: 0,
+  scored: 0,      // how many shooters scored this stand
+  scores: {}      // scores[round][stand][shooterName] = dead
+};
+
+function fiveStandStart(squadIdx){
+  fs.squadIdx = squadIdx;
+  fs.round = 1;
+  fs.stand = 0;
+  fs.shooterIdx = 0;
+  fs.scored = 0;
+  fs.scores = {1:{}, 2:{}};
+  for(var r=1;r<=2;r++) for(var st=0;st<5;st++) fs.scores[r][st] = {};
+  fiveStandPickFirst();
+}
+
+function fiveStandPickFirst(){
+  var squad = S.squads[fs.squadIdx];
+  var el = document.getElementById('tr-squad-list');
+  var html = '<div style="text-align:center;padding:20px 0">'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:22px;color:var(--gold);letter-spacing:2px;margin-bottom:4px">ROUND '+fs.round+' — STAND '+(fs.stand+1)+'</div>'
+    +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">WHO IS SHOOTING FIRST?</div>'
+    +'</div>';
+  squad.members.forEach(function(name, i){
+    html += '<button onclick="fiveStandSetFirst('+i+')" style="display:block;width:100%;text-align:left;background:var(--surf);border:3px solid var(--gold);border-radius:10px;padding:20px 18px;margin-bottom:12px;font-size:22px;font-weight:700;color:var(--txt);cursor:pointer;font-family:DM Sans,sans-serif">'+name+'</button>';
+  });
+  el.innerHTML = html;
+  trShow('squads');
+}
+
+function fiveStandSetFirst(startIdx){
+  fs.shooterIdx = startIdx;
+  fs.scored = 0;
+  fiveStandScoreNext();
+}
+
+function fiveStandScoreNext(){
+  var squad = S.squads[fs.squadIdx];
+  var members = squad.members;
+  var shooterName = members[fs.shooterIdx % members.length];
+  
+  // Set globals so existing scoring screen works
+  trapShooter = shooterName;
+  trapStation = fs.stand;
+  trapBirds = new Array(S.stationBirds[fs.stand]||S.birds||5).fill(null);
+  trapSquadIdx = fs.squadIdx;
+  
+  document.getElementById('tr-squad-label').textContent = 'ROUND '+fs.round+' — STAND '+(fs.stand+1)+' — SHOOTER '+(fs.scored+1)+' OF '+members.length;
+  document.getElementById('tr-progress').textContent = shooterName;
+  document.getElementById('tr-name').textContent = shooterName;
+  document.getElementById('tr-submit-btn').onclick = function(){ fiveStandSubmit(); };
+  
+  trShow('scoring');
+  buildTrapperBirds();
+}
+
+function fiveStandSubmit(){
+  var dead=0, lost=0;
+  trapBirds.forEach(function(b){ if(b===true)dead++; if(b===false)lost++; });
+  
+  var squad = S.squads[fs.squadIdx];
+  var members = squad.members;
+  var shooterName = members[fs.shooterIdx % members.length];
+  
+  // Store score
+  fs.scores[fs.round][fs.stand][shooterName] = dead;
+  
+  // Push to Firebase log
+  adminLog.unshift({
+    id: Date.now(),
+    time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
+    shooter: shooterName,
+    station: fs.stand,
+    dead: dead,
+    lost: lost,
+    total: S.stationBirds[fs.stand]||S.birds||5,
+    round: S.name,
+    trapper: trapperName||'Unknown',
+    eventType: '5STAND',
+    fiveStandRound: fs.round
+  });
+  localStorage.setItem('ct_admin', JSON.stringify(adminLog));
+  fbPushAdminLog(adminLog);
+  toast(shooterName + ' — ' + dead + ' dead', 'green');
+  
+  fs.scored++;
+  fs.shooterIdx++;
+  
+  if(fs.scored >= members.length){
+    // All shooters done this stand — show summary
+    fiveStandShowSummary();
+  } else {
+    fiveStandScoreNext();
+  }
+}
+
+function fiveStandShowSummary(){
+  var squad = S.squads[fs.squadIdx];
+  var members = squad.members;
+  var birdsPerStand = S.stationBirds[fs.stand]||S.birds||5;
+  var el = document.getElementById('tr-squad-list');
+  
+  // Calculate running totals for this round
+  var running = {};
+  members.forEach(function(m){ running[m] = 0; });
+  for(var st=0; st<=fs.stand; st++){
+    members.forEach(function(m){
+      running[m] += (fs.scores[fs.round][st][m]||0);
+    });
+  }
+  
+  var birdsShot = (fs.stand+1) * birdsPerStand;
+  var allStandsDone = fs.stand >= 4;
+  
+  var html = '<div style="text-align:center;padding:20px">'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:24px;color:var(--hit);letter-spacing:2px;margin-bottom:4px">&#10003; STAND '+(fs.stand+1)+' COMPLETE</div>'
+    +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:16px">ROUND '+fs.round+' — '+(fs.stand+1)+' OF 5 STANDS</div>'
+    +'<div style="background:var(--surf2);border-radius:10px;padding:12px;margin-bottom:20px">'
+    +'<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:4px;padding:4px 0 8px;border-bottom:1px solid var(--bdr);font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px">'
+    +'<div>SHOOTER</div><div style="text-align:center">THIS STAND</div><div style="text-align:right">RUNNING</div></div>';
+  
+  members.forEach(function(m){
+    var standScore = fs.scores[fs.round][fs.stand][m]||0;
+    var runScore = running[m]||0;
+    html += '<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:4px;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:14px">'
+      +'<div style="color:var(--txt)">'+m.split(' ')[0]+'</div>'
+      +'<div style="color:var(--dim);text-align:center">'+standScore+'/'+birdsPerStand+'</div>'
+      +'<div style="color:var(--gold);font-weight:700;text-align:right">'+runScore+'/'+birdsShot+'</div>'
+      +'</div>';
+  });
+  html += '</div>';
+  
+  if(!allStandsDone){
+    html += '<button onclick="fiveStandNextStand()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; ROTATE TO STAND '+(fs.stand+2)+'</button>';
+  } else {
+    // Round complete — show totals
+    var maxBirds = 5 * birdsPerStand;
+    html += '<div style="font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--hit);letter-spacing:2px;margin:12px 0 8px">ROUND '+fs.round+' TOTALS</div>'
+      +'<div style="background:var(--surf2);border-radius:10px;padding:12px;margin-bottom:20px">';
+    members.forEach(function(m){
+      html += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:14px">'
+        +'<span style="color:var(--txt)">'+m.split(' ')[0]+'</span>'
+        +'<span style="color:var(--gold);font-weight:700">'+(running[m]||0)+'/'+maxBirds+'</span>'
+        +'</div>';
+    });
+    html += '</div>';
+    if(fs.round === 1){
+      html += '<button onclick="fiveStandStartRound2()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:12px">&#9658; START ROUND 2</button>';
+    } else {
+      // Both rounds done — grand totals
+      var r1 = {}, r2 = {};
+      members.forEach(function(m){ r1[m]=0; r2[m]=0; });
+      for(var st2=0;st2<5;st2++){
+        members.forEach(function(m){
+          r1[m]+=(fs.scores[1][st2][m]||0);
+          r2[m]+=(fs.scores[2][st2][m]||0);
+        });
+      }
+      html += '<div style="font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--hit);letter-spacing:2px;margin:12px 0 8px">GRAND TOTALS — 50 BIRDS</div>'
+        +'<div style="background:var(--surf2);border-radius:10px;padding:12px;margin-bottom:20px">'
+        +'<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:4px;padding:4px 0 8px;border-bottom:1px solid var(--bdr);font-family:DM Mono,monospace;font-size:10px;color:var(--dim)">'
+        +'<div>SHOOTER</div><div style="text-align:center">RND 1</div><div style="text-align:center">RND 2</div><div style="text-align:right">TOTAL</div></div>';
+      members.forEach(function(m){
+        html += '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:4px;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:13px">'
+          +'<div style="color:var(--txt)">'+m.split(' ')[0]+'</div>'
+          +'<div style="color:var(--dim);text-align:center">'+r1[m]+'/'+maxBirds+'</div>'
+          +'<div style="color:var(--dim);text-align:center">'+r2[m]+'/'+maxBirds+'</div>'
+          +'<div style="color:var(--gold);font-weight:700;text-align:right">'+(r1[m]+r2[m])+'/'+(maxBirds*2)+'</div>'
+          +'</div>';
+      });
+      html += '</div>'
+        +'<button onclick="switchToTrapper()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer">&#8617; SIGN OUT</button>';
+    }
+  }
+  html += '</div>';
+  el.innerHTML = html;
+  trShow('squads');
+}
+
+function fiveStandNextStand(){
+  fs.stand++;
+  fs.shooterIdx = 0;
+  fs.scored = 0;
+  fiveStandPickFirst();
+}
+
+function fiveStandStartRound2(){
+  fs.round = 2;
+  fs.stand = 0;
+  fs.shooterIdx = 0;
+  fs.scored = 0;
+  fiveStandPickFirst();
+}
+// ═══════════════════════════════════════════════
+
 function drawTrapperPick() {
   if (!S.started || !S.shooters.length) {
     trShow('empty');
@@ -2265,6 +2473,11 @@ function trapperSignOff(sess, inp){
 
 // Trapper taps a squad — ask who's shooting first
 function startScoringSquad(squadIdx, keepStation) {
+  // For 5-Stand use completely separate flow
+  if(S.eventType === '5STAND'){
+    fiveStandStart(squadIdx);
+    return;
+  }
   trapSquadIdx = squadIdx;
   var squads   = S.squads.length ? S.squads : [{num:1, label:'1', members:S.shooters}];
   var squad    = squads[squadIdx];
@@ -2311,171 +2524,9 @@ function startScoringSquad(squadIdx, keepStation) {
 }
 
 // Show the current member's scoring screen
-function handle5StandStationComplete(squad){
-  var members = squad.members||[];
-  var squadLabel = squad.label||squad.num;
-  var el = document.getElementById('tr-squad-list');
-  var birdsPerStand = S.stationBirds[trapStation]||S.birds||5;
-
-  // Initialize local score store if needed
-  if(!window._fsScores) window._fsScores = {};
-  var scoreKey = 'f'+fiveStandRound+'_st'+trapStation;
-
-  // Mark current stand as done for this field
-  var standKey = 'fs_'+squadLabel+'_st'+trapStation+'_f'+fiveStandRound;
-  scoredSquadKeys[standKey] = true;
-
-  // Count how many stands done this field
-  var standsCompletedThisField = 0;
-  for(var si=0; si<S.stations; si++){
-    if(scoredSquadKeys['fs_'+squadLabel+'_st'+si+'_f'+fiveStandRound]) standsCompletedThisField++;
-  }
-
-  var allStandsDone = standsCompletedThisField >= S.stations;
-
-  if(!allStandsDone){
-    // Build scores from local accumulator
-    var standScores = window._fsScores[scoreKey]||{};
-    var runningScores = {};
-    members.forEach(function(m){ runningScores[m.trim().toLowerCase()] = 0; });
-    // Sum all stands this field
-    for(var si2=0; si2<=trapStation; si2++){
-      var sk = 'f'+fiveStandRound+'_st'+si2;
-      var st = window._fsScores[sk]||{};
-      members.forEach(function(m){
-        var k = m.trim().toLowerCase();
-        runningScores[k] = (runningScores[k]||0) + (st[k]||0);
-      });
-    }
-
-    var nextStand = (trapStation + 1) % S.stations;
-    var birdsShot = standsCompletedThisField * birdsPerStand;
-    var summaryHTML = '<div style="text-align:center;padding:30px 20px">'
-      +'<div style="font-family:Bebas Neue,sans-serif;font-size:26px;color:var(--hit);letter-spacing:2px;margin-bottom:6px">&#10003; STAND '+(trapStation+1)+' COMPLETE</div>'
-      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">FIELD '+fiveStandRound+' — '+standsCompletedThisField+' OF '+S.stations+' STANDS</div>'
-      +'<div style="background:var(--surf2);border-radius:10px;padding:12px;margin-bottom:20px">'
-      +'<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:4px;padding:4px 0 8px;border-bottom:1px solid var(--bdr);font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px">'
-      +'<div>SHOOTER</div><div style="text-align:center">THIS STAND</div><div style="text-align:right">RUNNING</div></div>';
-    members.forEach(function(m){
-      var firstName = m.split(' ')[0];
-      var k = m.trim().toLowerCase();
-      var standScore = standScores[k]||0;
-      var running = runningScores[k]||0;
-      summaryHTML += '<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:4px;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:14px">'
-        +'<div style="color:var(--txt)">'+firstName+'</div>'
-        +'<div style="color:var(--dim);text-align:center">'+standScore+'/'+birdsPerStand+'</div>'
-        +'<div style="color:var(--gold);font-weight:700;text-align:right">'+running+'/'+birdsShot+'</div>'
-        +'</div>';
-    });
-    summaryHTML += '</div>'
-      +'<button onclick="fiveStandRotate('+nextStand+')" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; ROTATE TO STAND '+(nextStand+1)+'</button>'
-      +'</div>';
-    el.innerHTML = summaryHTML;
-    trShow('squads');
-
-  } else if(fiveStandRound === 1){
-    // Field 1 complete — sum all stands from local store
-    var f1Scores = {};
-    members.forEach(function(m){ f1Scores[m.trim().toLowerCase()] = 0; });
-    for(var si3=0; si3<S.stations; si3++){
-      var sk3 = 'f1_st'+si3;
-      var st3 = window._fsScores[sk3]||{};
-      members.forEach(function(m){
-        var k = m.trim().toLowerCase();
-        f1Scores[k] = (f1Scores[k]||0) + (st3[k]||0);
-      });
-    }
-    // Save field 1 totals for final screen
-    window._fsField1 = f1Scores;
-
-    var maxBirds = S.stations * birdsPerStand;
-    var f1HTML = '<div style="text-align:center;padding:30px 20px">'
-      +'<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:6px">&#10003; FIELD 1 COMPLETE</div>'
-      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">'+maxBirds+' BIRDS</div>'
-      +'<div style="background:var(--surf2);border-radius:10px;padding:16px;margin-bottom:20px;text-align:left">';
-    members.forEach(function(m){
-      var firstName = m.split(' ')[0];
-      var score = f1Scores[m.trim().toLowerCase()]||0;
-      f1HTML += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:14px">'
-        +'<span style="color:var(--txt)">'+firstName+'</span>'
-        +'<span style="color:var(--gold);font-weight:700">'+score+'/'+maxBirds+'</span>'
-        +'</div>';
-    });
-    f1HTML += '</div>'
-      +'<button onclick="fiveStandStartField2()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; START FIELD 2</button>'
-      +'</div>';
-    el.innerHTML = f1HTML;
-    trShow('squads');
-
-  } else {
-    // Field 2 complete — sum field 2 stands and show final totals
-    var f2Scores = {};
-    members.forEach(function(m){ f2Scores[m.trim().toLowerCase()] = 0; });
-    for(var si4=0; si4<S.stations; si4++){
-      var sk4 = 'f2_st'+si4;
-      var st4 = window._fsScores[sk4]||{};
-      members.forEach(function(m){
-        var k = m.trim().toLowerCase();
-        f2Scores[k] = (f2Scores[k]||0) + (st4[k]||0);
-      });
-    }
-    var f1Final = window._fsField1||{};
-    var maxBirdsField = S.stations * birdsPerStand;
-    var finalHTML = '<div style="text-align:center;padding:30px 20px">'
-      +'<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:6px">&#10003; ALL DONE</div>'
-      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">FINAL TOTALS — '+(maxBirdsField*2)+' BIRDS</div>'
-      +'<div style="background:var(--surf2);border-radius:10px;padding:16px;margin-bottom:20px">'
-      +'<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:4px;padding:4px 0 8px;border-bottom:1px solid var(--bdr);font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px">'
-      +'<div>SHOOTER</div><div style="text-align:center">FIELD 1</div><div style="text-align:center">FIELD 2</div><div style="text-align:right">TOTAL</div></div>';
-    members.forEach(function(m){
-      var firstName = m.split(' ')[0];
-      var k = m.trim().toLowerCase();
-      var f1 = f1Final[k]||0;
-      var f2 = f2Scores[k]||0;
-      finalHTML += '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:4px;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:13px">'
-        +'<div style="color:var(--txt)">'+firstName+'</div>'
-        +'<div style="color:var(--dim);text-align:center">'+f1+'/'+maxBirdsField+'</div>'
-        +'<div style="color:var(--dim);text-align:center">'+f2+'/'+maxBirdsField+'</div>'
-        +'<div style="color:var(--gold);font-weight:700;text-align:right">'+(f1+f2)+'/'+(maxBirdsField*2)+'</div>'
-        +'</div>';
-    });
-    finalHTML += '</div>'
-      +'<button onclick="switchToTrapper()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer">&#8617; SIGN OUT</button>'
-      +'</div>';
-    el.innerHTML = finalHTML;
-    trShow('squads');
-    fiveStandRound = 1;
-    window._fsScores = {};
-    window._fsField1 = {};
-  }
-}
 
 
-function fiveStandRotate(nextStand){
-  trapStation = nextStand;
-  trapScoredCount = 0;
-  trapMemberIdx = 0;
-  // Restore squad index
-  if(window._fiveStandSquadIdx !== undefined) trapSquadIdx = window._fiveStandSquadIdx;
-  var stSel = document.getElementById('tr-st');
-  if(stSel) stSel.value = String(trapStation);
-  updateStationStatus(trapStation+1, trapAssignedSquad||null, [], 'scoring');
-  scoreCurrentMember();
-}
 
-function fiveStandStartField2(){
-  fiveStandRound = 2;
-  trapStation = 0;
-  trapScoredCount = 0;
-  trapMemberIdx = 0;
-  scoredSquadKeys = {};
-  // Restore squad index
-  if(window._fiveStandSquadIdx !== undefined) trapSquadIdx = window._fiveStandSquadIdx;
-  var stSel = document.getElementById('tr-st');
-  if(stSel) stSel.value = '0';
-  updateStationStatus(1, trapAssignedSquad||null, [], 'scoring');
-  scoreCurrentMember();
-}
 
 function scoreCurrentMember() {
 
@@ -2787,26 +2838,11 @@ function trapSubmit() {
   var squadDone = trapScoredCount >= (S.squads[trapSquadIdx] ? S.squads[trapSquadIdx].members.length : 1);
   if(squadDone){
     var currentLabel = S.squads[trapSquadIdx] ? String(S.squads[trapSquadIdx].label||S.squads[trapSquadIdx].num) : '1';
-    if(S.eventType === '5STAND'){
-      // Accumulate score locally for display
-      if(!window._fsScores) window._fsScores = {};
-      var fsKey = 'f'+fiveStandRound+'_st'+trapStation;
-      if(!window._fsScores[fsKey]) window._fsScores[fsKey] = {};
-      var shooterKey = trapShooter.trim().toLowerCase();
-      window._fsScores[fsKey][shooterKey] = (window._fsScores[fsKey][shooterKey]||0) + dead;
-      // For 5-Stand: reset count and call handler directly
-      trapScoredCount = 0;
-      trapMemberIdx = 0;
-      var sq5 = S.squads[trapSquadIdx];
-      window._fiveStandSquadIdx = trapSquadIdx; // Save for rotation
-      handle5StandStationComplete(sq5);
-    } else {
-      // For sporting clays: mark squad scored and continue
+    // For sporting clays: mark squad scored and continue
       var sqKey = currentLabel + '_' + trapStation;
       scoredSquadKeys[sqKey] = true;
       updateStationStatus(trapStation+1, currentLabel, [], 'waiting');
       scoreCurrentMember();
-    }
   } else {
     scoreCurrentMember();
   }
