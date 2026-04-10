@@ -2313,8 +2313,9 @@ function handle5StandStationComplete(squad){
   var el = document.getElementById('tr-squad-list');
   var birdsPerStand = S.stationBirds[trapStation]||S.birds||5;
 
-  // Use adminLog in memory (most current)
-  var log = adminLog.length ? adminLog : JSON.parse(localStorage.getItem('ct_admin')||'[]');
+  // Initialize local score store if needed
+  if(!window._fsScores) window._fsScores = {};
+  var scoreKey = 'f'+fiveStandRound+'_st'+trapStation;
 
   // Mark current stand as done for this field
   var standKey = 'fs_'+squadLabel+'_st'+trapStation+'_f'+fiveStandRound;
@@ -2326,30 +2327,23 @@ function handle5StandStationComplete(squad){
     if(scoredSquadKeys['fs_'+squadLabel+'_st'+si+'_f'+fiveStandRound]) standsCompletedThisField++;
   }
 
-  // Build scores for THIS stand from log
-  var standScores = {};
-  members.forEach(function(m){ standScores[m.trim().toLowerCase()] = 0; });
-  log.forEach(function(r){
-    if(r.fiveStandRound === fiveStandRound && r.station === trapStation){
-      var k = r.shooter ? r.shooter.trim().toLowerCase() : '';
-      if(standScores.hasOwnProperty(k)) standScores[k] += r.dead;
-    }
-  });
-
   var allStandsDone = standsCompletedThisField >= S.stations;
 
   if(!allStandsDone){
-    // Build running totals for this field
-    var runningTotals = {};
-    members.forEach(function(m){ runningTotals[m.trim().toLowerCase()] = 0; });
-    log.forEach(function(r){
-      if(r.fiveStandRound === fiveStandRound){
-        var k = r.shooter ? r.shooter.trim().toLowerCase() : '';
-        if(runningTotals.hasOwnProperty(k)) runningTotals[k] += r.dead;
-      }
-    });
+    // Build scores from local accumulator
+    var standScores = window._fsScores[scoreKey]||{};
+    var runningScores = {};
+    members.forEach(function(m){ runningScores[m.trim().toLowerCase()] = 0; });
+    // Sum all stands this field
+    for(var si2=0; si2<=trapStation; si2++){
+      var sk = 'f'+fiveStandRound+'_st'+si2;
+      var st = window._fsScores[sk]||{};
+      members.forEach(function(m){
+        var k = m.trim().toLowerCase();
+        runningScores[k] = (runningScores[k]||0) + (st[k]||0);
+      });
+    }
 
-    // Show rotation summary
     var nextStand = (trapStation + 1) % S.stations;
     var birdsShot = standsCompletedThisField * birdsPerStand;
     var summaryHTML = '<div style="text-align:center;padding:30px 20px">'
@@ -2362,7 +2356,7 @@ function handle5StandStationComplete(squad){
       var firstName = m.split(' ')[0];
       var k = m.trim().toLowerCase();
       var standScore = standScores[k]||0;
-      var running = runningTotals[k]||0;
+      var running = runningScores[k]||0;
       summaryHTML += '<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:4px;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:14px">'
         +'<div style="color:var(--txt)">'+firstName+'</div>'
         +'<div style="color:var(--dim);text-align:center">'+standScore+'/'+birdsPerStand+'</div>'
@@ -2376,15 +2370,19 @@ function handle5StandStationComplete(squad){
     trShow('squads');
 
   } else if(fiveStandRound === 1){
-    // Field 1 complete — build field totals from log
-    var fieldTotals = {};
-    members.forEach(function(m){ fieldTotals[m.trim().toLowerCase()] = 0; });
-    log.forEach(function(r){
-      if(r.fiveStandRound===1){
-        var k = r.shooter ? r.shooter.trim().toLowerCase() : '';
-        if(fieldTotals.hasOwnProperty(k)) fieldTotals[k] += r.dead;
-      }
-    });
+    // Field 1 complete — sum all stands from local store
+    var f1Scores = {};
+    members.forEach(function(m){ f1Scores[m.trim().toLowerCase()] = 0; });
+    for(var si3=0; si3<S.stations; si3++){
+      var sk3 = 'f1_st'+si3;
+      var st3 = window._fsScores[sk3]||{};
+      members.forEach(function(m){
+        var k = m.trim().toLowerCase();
+        f1Scores[k] = (f1Scores[k]||0) + (st3[k]||0);
+      });
+    }
+    // Save field 1 totals for final screen
+    window._fsField1 = f1Scores;
 
     var maxBirds = S.stations * birdsPerStand;
     var f1HTML = '<div style="text-align:center;padding:30px 20px">'
@@ -2393,7 +2391,7 @@ function handle5StandStationComplete(squad){
       +'<div style="background:var(--surf2);border-radius:10px;padding:16px;margin-bottom:20px;text-align:left">';
     members.forEach(function(m){
       var firstName = m.split(' ')[0];
-      var score = fieldTotals[m.trim().toLowerCase()]||0;
+      var score = f1Scores[m.trim().toLowerCase()]||0;
       f1HTML += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:14px">'
         +'<span style="color:var(--txt)">'+firstName+'</span>'
         +'<span style="color:var(--gold);font-weight:700">'+score+'/'+maxBirds+'</span>'
@@ -2406,18 +2404,18 @@ function handle5StandStationComplete(squad){
     trShow('squads');
 
   } else {
-    // Field 2 complete — show final totals
-    var f1Totals = {};
-    var f2Totals = {};
-    members.forEach(function(m){ f1Totals[m.trim().toLowerCase()]=0; f2Totals[m.trim().toLowerCase()]=0; });
-    log.forEach(function(r){
-      var k = r.shooter ? r.shooter.trim().toLowerCase() : '';
-      if(f1Totals.hasOwnProperty(k)){
-        if(r.fiveStandRound===1) f1Totals[k]+=r.dead;
-        else if(r.fiveStandRound===2) f2Totals[k]+=r.dead;
-      }
-    });
-
+    // Field 2 complete — sum field 2 stands and show final totals
+    var f2Scores = {};
+    members.forEach(function(m){ f2Scores[m.trim().toLowerCase()] = 0; });
+    for(var si4=0; si4<S.stations; si4++){
+      var sk4 = 'f2_st'+si4;
+      var st4 = window._fsScores[sk4]||{};
+      members.forEach(function(m){
+        var k = m.trim().toLowerCase();
+        f2Scores[k] = (f2Scores[k]||0) + (st4[k]||0);
+      });
+    }
+    var f1Final = window._fsField1||{};
     var maxBirdsField = S.stations * birdsPerStand;
     var finalHTML = '<div style="text-align:center;padding:30px 20px">'
       +'<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:6px">&#10003; ALL DONE</div>'
@@ -2428,8 +2426,8 @@ function handle5StandStationComplete(squad){
     members.forEach(function(m){
       var firstName = m.split(' ')[0];
       var k = m.trim().toLowerCase();
-      var f1 = f1Totals[k]||0;
-      var f2 = f2Totals[k]||0;
+      var f1 = f1Final[k]||0;
+      var f2 = f2Scores[k]||0;
       finalHTML += '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:4px;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:13px">'
         +'<div style="color:var(--txt)">'+firstName+'</div>'
         +'<div style="color:var(--dim);text-align:center">'+f1+'/'+maxBirdsField+'</div>'
@@ -2443,6 +2441,8 @@ function handle5StandStationComplete(squad){
     el.innerHTML = finalHTML;
     trShow('squads');
     fiveStandRound = 1;
+    window._fsScores = {};
+    window._fsField1 = {};
   }
 }
 
@@ -2784,6 +2784,12 @@ function trapSubmit() {
   if(squadDone){
     var currentLabel = S.squads[trapSquadIdx] ? String(S.squads[trapSquadIdx].label||S.squads[trapSquadIdx].num) : '1';
     if(S.eventType === '5STAND'){
+      // Accumulate score locally for display
+      if(!window._fsScores) window._fsScores = {};
+      var fsKey = 'f'+fiveStandRound+'_st'+trapStation;
+      if(!window._fsScores[fsKey]) window._fsScores[fsKey] = {};
+      var shooterKey = trapShooter.trim().toLowerCase();
+      window._fsScores[fsKey][shooterKey] = (window._fsScores[fsKey][shooterKey]||0) + dead;
       // For 5-Stand: reset count and call handler directly
       trapScoredCount = 0;
       trapMemberIdx = 0;
