@@ -2929,19 +2929,50 @@ function drawLeader(){
 
   var maxP = S.started ? (S.stationBirds.reduce(function(a,b){return a+b;},0)||S.stations*S.birds) : 100;
   var medals=['🥇','🥈','🥉'];
-  var sorted=Object.entries(totals).sort(function(a,b){return b[1].h-a[1].h;});
 
-  var html = '<div style="font-family:Bebas Neue,sans-serif;font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:10px">🏆 Individual</div>';
-  html += sorted.map(function(e,i){
-    var nm=e[0],sc=e[1],pct=maxP>0?Math.round(sc.h/maxP*100):0;
-    return '<div class="lb-row'+(i===0?' gold':'')+'">'
-      +'<div class="lb-rank">'+(medals[i]||i+1)+'</div>'
-      +'<div style="flex:1"><div style="font-size:15px;font-weight:600">'+nm+'</div>'
-      +'<div style="font-family:DM Mono,monospace;font-size:11px;margin-top:2px"><span style="color:var(--hit)">'+sc.h+' Dead</span> &nbsp; <span style="color:var(--miss)">'+sc.ms+' Lost</span></div>'
-      +'<div class="lb-bar"><div class="lb-fill" style="width:'+(maxP>0?Math.round(sc.h/maxP*100):0)+'%"></div></div></div>'
-      +'<div style="text-align:right"><div style="font-family:Bebas Neue,sans-serif;font-size:30px;line-height:1">'+sc.h+'</div>'
-      +'<div style="font-size:11px;color:var(--dim);font-family:DM Mono,monospace">'+pct+'%</div></div></div>';
-  }).join('');
+  // Separate into categories based on suffix in name
+  function getCategory(name){
+    if(/\(W\)/i.test(name)) return 'W';
+    if(/\(S\)/i.test(name)) return 'S';
+    if(/\(Y\)/i.test(name)) return 'Y';
+    return 'O';
+  }
+  function cleanName(name){
+    return name.replace(/\s*\((W|S|Y)\)\s*/gi,'').trim();
+  }
+
+  var categories = {O:[], W:[], S:[], Y:[]};
+  Object.entries(totals).forEach(function(e){
+    var cat = getCategory(e[0]);
+    categories[cat].push({name:e[0], clean:cleanName(e[0]), h:e[1].h, ms:e[1].ms});
+  });
+  Object.keys(categories).forEach(function(cat){
+    categories[cat].sort(function(a,b){ return b.h-a.h; });
+  });
+
+  function renderCategory(title, color, shooters){
+    if(!shooters.length) return '';
+    var html = '<div style="margin-bottom:20px">';
+    html += '<div style="font-family:Bebas Neue,sans-serif;font-size:16px;letter-spacing:2px;color:'+color+';margin-bottom:10px">🏆 '+title+'</div>';
+    html += shooters.map(function(s,i){
+      var pct = maxP>0?Math.round(s.h/maxP*100):0;
+      return '<div class="lb-row'+(i===0?' gold':'')+'">'
+        +'<div class="lb-rank">'+(medals[i]||i+1)+'</div>'
+        +'<div style="flex:1"><div style="font-size:15px;font-weight:600">'+s.clean+'</div>'
+        +'<div style="font-family:DM Mono,monospace;font-size:11px;margin-top:2px"><span style="color:var(--hit)">'+s.h+' Dead</span> &nbsp; <span style="color:var(--miss)">'+s.ms+' Lost</span></div>'
+        +'<div class="lb-bar"><div class="lb-fill" style="width:'+pct+'%"></div></div></div>'
+        +'<div style="text-align:right"><div style="font-family:Bebas Neue,sans-serif;font-size:30px;line-height:1">'+s.h+'</div>'
+        +'<div style="font-size:11px;color:var(--dim);font-family:DM Mono,monospace">'+pct+'%</div></div></div>';
+    }).join('');
+    html += '</div>';
+    return html;
+  }
+
+  var html = '';
+  html += renderCategory('Open', 'var(--gold)', categories.O);
+  html += renderCategory('Women', '#ff69b4', categories.W);
+  html += renderCategory('Senior', '#7ec8e3', categories.S);
+  html += renderCategory('Youth', '#90ee90', categories.Y);
 
   var squads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
   if(squads.length){
