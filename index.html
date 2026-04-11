@@ -825,6 +825,14 @@ function connectAsTrapper(){
             if(a.assignedSquad !== null && a.assignedSquad !== undefined){
               trapAssignedSquad = a.assignedSquad;
             }
+            // Store custom stations if assigned
+            if(a.customStations && a.customStations.length){
+              window._customStations = a.customStations;
+              window._customStationIdx = 0;
+            } else {
+              window._customStations = null;
+              window._customStationIdx = 0;
+            }
             // Hide sign out button for assigned trappers
             var signoutBtn = document.getElementById('tr-signout-btn');
             if(a.assignedSquad && signoutBtn) signoutBtn.style.display = 'none';
@@ -2250,11 +2258,21 @@ function buildSquadList() {
 }
 
 function moveToNextStation(){
-  trapStation = (trapStation + 1) % S.stations;
+  if(window._customStations && window._customStations.length){
+    // Use custom station list
+    window._customStationIdx = (window._customStationIdx||0) + 1;
+    if(window._customStationIdx >= window._customStations.length){
+      // All custom stations done — show complete
+      trapStation = window._customStations[window._customStations.length-1];
+    } else {
+      trapStation = window._customStations[window._customStationIdx];
+    }
+  } else {
+    trapStation = (trapStation + 1) % S.stations;
+  }
   scoredSquadKeys = {};
   var stSel = document.getElementById('tr-st');
   if(stSel) stSel.value = String(trapStation);
-  // Update board with new station
   if(trapAssignedSquad) updateStationStatus(trapStation+1, trapAssignedSquad, [], 'waiting');
   updateArrivalNote();
   buildSquadList();
@@ -2564,7 +2582,8 @@ function scoreCurrentMember() {
         Object.keys(stDoneMap).forEach(function(st){
           if(Object.keys(stDoneMap[st]).length>=squadMembers2.length) completedSt++;
         });
-        if(completedSt >= S.stations){
+        var totalStationsForSquad = (window._customStations && window._customStations.length) ? window._customStations.length : S.stations;
+        if(completedSt >= totalStationsForSquad){
           updateStationStatus(trapStation+1, squadLabel2, squadMembers2, 'complete');
           var el3 = document.getElementById('tr-squad-list');
           if(el3) el3.innerHTML = '<div style="text-align:center;padding:40px 20px">'
@@ -2573,9 +2592,15 @@ function scoreCurrentMember() {
             +'<button onclick="switchToTrapper()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:12px">&#8617; SIGN OUT</button>'
             +'<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px">Tap anywhere to sign out</div>'
             +'</div>';
-          // Auto sign out after 60 seconds
         } else {
-          var nextSt = (trapStation + 1) % S.stations;
+          // Calculate next station
+          var nextSt;
+          if(window._customStations && window._customStations.length){
+            var nextIdx = (window._customStationIdx||0) + 1;
+            nextSt = nextIdx < window._customStations.length ? window._customStations[nextIdx] : trapStation;
+          } else {
+            nextSt = (trapStation + 1) % S.stations;
+          }
           var el3 = document.getElementById('tr-squad-list');
           if(el3) el3.innerHTML = '<div style="text-align:center;padding:40px 20px">'
             +'<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:10px">&#10003; STATION '+(trapStation+1)+' COMPLETE</div>'
@@ -3750,12 +3775,18 @@ function drawAssign(){
       html += '</select>';
 
       html += '<label class="lbl">Starting Station</label>';
-      html += '<select id="assign-st-'+tKey+'" class="inp" style="margin-bottom:12px">';
+      html += '<select id="assign-st-'+tKey+'" class="inp" style="margin-bottom:10px">';
       for(var i=0;i<(S.started?S.stations:17);i++){
         var sel2 = trapper.assignedStation == i ? ' selected' : '';
         html += '<option value="'+i+'"'+sel2+'>'+stationLabel()+' '+(i+1)+'</option>';
       }
       html += '</select>';
+
+      html += '<label class="lbl">Custom Stations <span style="color:var(--dim);font-size:10px">(optional — e.g. 1,2,3,5,6,7)</span></label>';
+      html += '<div style="display:flex;gap:8px;margin-bottom:12px">';
+      html += '<input id="assign-custom-'+tKey+'" class="inp" type="text" placeholder="e.g. 1,2,3,5,6 or leave blank for default" style="flex:1;font-size:13px" value="'+(trapper.customStations||'')+'">';
+      html += '<button onclick="document.getElementById(\'assign-custom-'+tKey+'\').value=\'\'" class="btn btn-grey" style="font-size:11px;padding:8px 12px;white-space:nowrap">Default</button>';
+      html += '</div>';
 
       html += '<button onclick="saveAssignment(this)" data-key="'+tKey+'" data-name="'+trapper.name+'" class="btn btn-org btn-full" style="font-size:14px;padding:12px">📡 Send to Trapper</button>';
       html += '</div>';
@@ -3770,17 +3801,26 @@ function saveAssignment(btn){
   var trapperName = btn.getAttribute('data-name');
   var sqSel = document.getElementById('assign-sq-'+tKey);
   var stSel = document.getElementById('assign-st-'+tKey);
+  var customInp = document.getElementById('assign-custom-'+tKey);
   if(!sqSel || !stSel) return;
   var squad = sqSel.value;
   var station = parseInt(stSel.value);
   if(!squad){ toast('Select a squad first'); return; }
 
+  // Parse custom stations if provided
+  var customStations = null;
+  if(customInp && customInp.value.trim()){
+    customStations = customInp.value.trim().split(/[\s,]+/).map(function(s){ return parseInt(s)-1; }).filter(function(n){ return !isNaN(n) && n>=0; });
+    if(customStations.length) station = customStations[0]; // Start at first custom station
+  }
+
   var saveKey = localStorage.getItem('ct_event_key')||'DEFAULT';
   db.ref(saveKey+'/ct_trappers/'+tKey).update({
     assignedSquad: squad,
-    assignedStation: station
+    assignedStation: station,
+    customStations: customStations || null
   }).then(function(){
-    toast(trapperName+' assigned Squad '+squad+' / Station '+(station+1), 'green');
+    toast(trapperName+' assigned Squad '+squad+(customStations?' / Custom stations':' / Station '+(station+1)), 'green');
     drawAssign();
   });
 }
