@@ -567,6 +567,11 @@ var trapperName = '';
 var trapperEventType = 'SC';
 var db = null;
 function getKey(){ return localStorage.getItem('ct_event_key')||'DEFAULT'; }
+function getClubKey(){
+  var club = localStorage.getItem('ct_club_name')||'';
+  if(!club) return 'DEFAULT_CLUB';
+  return 'club_'+club.toUpperCase().replace(/[^A-Z0-9]/g,'_').substring(0,40);
+}
 
 var S = {started:false,name:'',stations:10,birds:10,stationBirds:[],shooters:[],squads:[],scores:{},active:'',eventType:'SC'};
 var activeSession = '';
@@ -598,7 +603,7 @@ function checkPeekPin(){
   var pin = document.getElementById('peek-pin-inp').value;
   var key = localStorage.getItem('ct_event_key')||'DEFAULT';
   if(db){
-    db.ref(key+'/ct_admin_pin').once('value').then(function(snap){
+    db.ref(getClubKey()+'/ct_admin_pin').once('value').then(function(snap){
       var adminPin = snap.val() || localStorage.getItem('ct_admin_pin') || '0000';
       toast('KEY:'+key+' PIN:'+adminPin, '');
       if(snap.val()) localStorage.setItem('ct_admin_pin', snap.val());
@@ -677,7 +682,7 @@ function checkAdminPin(){
     }
   }
   if(db && key !== 'DEFAULT'){
-    db.ref(key+'/ct_admin_pin').once('value').then(function(snap){
+    db.ref(getClubKey()+'/ct_admin_pin').once('value').then(function(snap){
       var adminPin = snap.val() || localStorage.getItem('ct_admin_pin') || '0000';
       if(snap.val()) localStorage.setItem('ct_admin_pin', snap.val());
       verifyPin(adminPin);
@@ -769,7 +774,7 @@ function connectAsTrapper(){
   if(db){
     toast('Connecting...', 'green');
     // Fetch PIN from Firebase immediately so all devices have the current PIN
-    db.ref(getKey()+'/ct_admin_pin').once('value').then(function(pinSnap){
+    db.ref(getClubKey()+'/ct_admin_pin').once('value').then(function(pinSnap){
       if(pinSnap.val()) localStorage.setItem('ct_admin_pin', pinSnap.val());
     });
     db.ref(getKey()+'/ct_event_state').once('value').then(function(snap){
@@ -1116,7 +1121,7 @@ function changeAdminPin(){
   // Store in localStorage AND Firebase under event key
   localStorage.setItem('ct_admin_pin', pin);
   if(db && S.started){
-    db.ref(getKey()+'/ct_admin_pin').set(pin);
+    db.ref(getClubKey()+'/ct_admin_pin').set(pin);
   }
   inp.value = '';
   document.getElementById('current-pin-display').textContent = pin;
@@ -1132,7 +1137,7 @@ function unlockPinChange(){
   if(msg){ msg.textContent='PIN is tied to this event code: '+getKey(); }
   // Load PIN from Firebase if available
   if(db){
-    db.ref(getKey()+'/ct_admin_pin').once('value').then(function(snap){
+    db.ref(getClubKey()+'/ct_admin_pin').once('value').then(function(snap){
       if(snap.val()){
         localStorage.setItem('ct_admin_pin', snap.val());
         var disp = document.getElementById('current-pin-display');
@@ -1576,6 +1581,7 @@ function startRound(){
 
   S.name=n.toUpperCase();
   S.club = (document.getElementById('ev-club').value.trim()||'').toUpperCase();
+  localStorage.setItem('ct_club_name', S.club);
   S.stations=parseInt(document.getElementById('ev-st').value);
   S.birds=parseInt(document.getElementById('ev-birds').value);
 
