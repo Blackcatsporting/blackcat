@@ -2283,6 +2283,8 @@ function fs5Init(squadIdx){
   fs5.shooterIdx = 0;
   fs5.scored = 0;
   fs5.scores = {1:{0:{},1:{},2:{},3:{},4:{}}, 2:{0:{},1:{},2:{},3:{},4:{}}};
+  trapSquadIdx = -1; // Prevent scoreCurrentMember interference
+  trapScoredCount = 0;
   fs5PickFirst();
 }
 
@@ -2316,7 +2318,7 @@ function fs5ScoreNext(){
   trapShooter = name;
   trapStation = fs5.rotation;
   trapBirds = new Array(birds).fill(null);
-  trapSquadIdx = fs5.squadIdx;
+  // Do NOT set trapSquadIdx — prevents scoreCurrentMember from interfering
   document.getElementById('tr-squad-label').textContent = 'ROUND '+fs5.round+' — ROTATION '+(fs5.rotation+1)+' — '+fs5.scored+'/'+members.length+' SCORED';
   document.getElementById('tr-progress').textContent = name;
   document.getElementById('tr-name').textContent = name;
