@@ -2271,7 +2271,181 @@ function trapperSignOff(sess, inp){
 }
 
 // Trapper taps a squad — ask who's shooting first
+// ═══════════════════════════════
+// 5-STAND ENGINE
+// ═══════════════════════════════
+var fs5 = { squadIdx:-1, round:1, rotation:0, shooterIdx:0, scored:0, scores:{1:{},2:{}} };
+
+function fs5Init(squadIdx){
+  fs5.squadIdx = squadIdx;
+  fs5.round = 1;
+  fs5.rotation = 0;
+  fs5.shooterIdx = 0;
+  fs5.scored = 0;
+  fs5.scores = {1:{0:{},1:{},2:{},3:{},4:{}}, 2:{0:{},1:{},2:{},3:{},4:{}}};
+  fs5PickFirst();
+}
+
+function fs5PickFirst(){
+  var squad = S.squads[fs5.squadIdx];
+  var el = document.getElementById('tr-squad-list');
+  var html = '<div style="text-align:center;padding:16px 0 20px">'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:22px;color:var(--gold);letter-spacing:2px;margin-bottom:4px">ROUND '+fs5.round+' — ROTATION '+(fs5.rotation+1)+'</div>'
+    +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">SCORE IN ANY ORDER — WHO IS FIRST?</div>';
+  squad.members.forEach(function(name, i){
+    html += '<button onclick="fs5SetFirst('+i+')" style="display:block;width:100%;text-align:left;background:var(--surf);border:3px solid var(--gold);border-radius:10px;padding:18px;margin-bottom:10px;font-size:20px;font-weight:700;color:var(--txt);cursor:pointer;font-family:DM Sans,sans-serif;-webkit-tap-highlight-color:transparent">'+name+'</button>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+  document.getElementById('tr-empty').style.display='none';
+  document.getElementById('tr-screen-squads').style.display='block';
+  document.getElementById('tr-screen-scoring').style.display='none';
+}
+
+function fs5SetFirst(idx){
+  fs5.shooterIdx = idx;
+  fs5.scored = 0;
+  fs5ScoreNext();
+}
+
+function fs5ScoreNext(){
+  var squad = S.squads[fs5.squadIdx];
+  var members = squad.members;
+  var name = members[fs5.shooterIdx % members.length];
+  var birds = S.stationBirds[fs5.rotation]||S.birds||5;
+  trapShooter = name;
+  trapStation = fs5.rotation;
+  trapBirds = new Array(birds).fill(null);
+  trapSquadIdx = fs5.squadIdx;
+  document.getElementById('tr-squad-label').textContent = 'ROUND '+fs5.round+' — ROTATION '+(fs5.rotation+1)+' — '+fs5.scored+'/'+members.length+' SCORED';
+  document.getElementById('tr-progress').textContent = name;
+  document.getElementById('tr-name').textContent = name;
+  trShow('scoring');
+  buildTrapperBirds();
+  document.getElementById('tr-submit-btn').onclick = function(){ fs5Submit(); };
+}
+
+function fs5Submit(){
+  var dead=0, lost=0;
+  trapBirds.forEach(function(b){ if(b===true)dead++; if(b===false)lost++; });
+  var squad = S.squads[fs5.squadIdx];
+  var members = squad.members;
+  var name = members[fs5.shooterIdx % members.length];
+  // Store score
+  fs5.scores[fs5.round][fs5.rotation][name] = dead;
+  // Push to log
+  adminLog.unshift({
+    id:Date.now(), time:new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
+    shooter:name, station:fs5.rotation, dead:dead, lost:lost,
+    total:S.stationBirds[fs5.rotation]||S.birds||5,
+    round:S.name, trapper:trapperName||'Unknown',
+    eventType:'5STAND', fiveStandRound:fs5.round
+  });
+  localStorage.setItem('ct_admin', JSON.stringify(adminLog));
+  fbPushAdminLog(adminLog);
+  toast(name+' — '+dead+' dead','green');
+  fs5.scored++;
+  fs5.shooterIdx++;
+  if(fs5.scored >= members.length){
+    fs5ShowSummary();
+  } else {
+    fs5ScoreNext();
+  }
+}
+
+function fs5ShowSummary(){
+  var squad = S.squads[fs5.squadIdx];
+  var members = squad.members;
+  var birds = S.stationBirds[fs5.rotation]||S.birds||5;
+  var el = document.getElementById('tr-squad-list');
+  // Running totals
+  var running = {};
+  members.forEach(function(m){ running[m]=0; });
+  for(var r=0; r<=fs5.rotation; r++){
+    members.forEach(function(m){ running[m]+=(fs5.scores[fs5.round][r][m]||0); });
+  }
+  var birdsShot = (fs5.rotation+1)*birds;
+  var allDone = fs5.rotation >= 4;
+  var html = '<div style="text-align:center;padding:20px">'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:24px;color:var(--hit);letter-spacing:2px;margin-bottom:4px">&#10003; ROTATION '+(fs5.rotation+1)+' COMPLETE</div>'
+    +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:16px">ROUND '+fs5.round+' — '+(fs5.rotation+1)+' OF 5</div>'
+    +'<div style="background:var(--surf2);border-radius:10px;padding:12px;margin-bottom:20px">'
+    +'<div style="display:grid;grid-template-columns:2fr 1fr 1fr;padding:4px 0 8px;border-bottom:1px solid var(--bdr);font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px">'
+    +'<div>SHOOTER</div><div style="text-align:center">THIS ROUND</div><div style="text-align:right">RUNNING</div></div>';
+  members.forEach(function(m){
+    var rot = fs5.scores[fs5.round][fs5.rotation][m]||0;
+    var run = running[m]||0;
+    html += '<div style="display:grid;grid-template-columns:2fr 1fr 1fr;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:14px">'
+      +'<div style="color:var(--txt)">'+m.split(' ')[0]+'</div>'
+      +'<div style="color:var(--dim);text-align:center">'+rot+'/'+birds+'</div>'
+      +'<div style="color:var(--gold);font-weight:700;text-align:right">'+run+'/'+birdsShot+'</div>'
+      +'</div>';
+  });
+  html += '</div>';
+  if(!allDone){
+    html += '<button onclick="fs5Rotate()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; ROTATE TO STAND '+(fs5.rotation+2)+'</button>';
+  } else {
+    // Round complete
+    var maxBirds = 5*birds;
+    html += '<div style="font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--hit);letter-spacing:2px;margin:12px 0 8px">ROUND '+fs5.round+' TOTAL</div>'
+      +'<div style="background:var(--surf2);border-radius:10px;padding:12px;margin-bottom:16px">';
+    members.forEach(function(m){
+      html += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:14px">'
+        +'<span style="color:var(--txt)">'+m.split(' ')[0]+'</span>'
+        +'<span style="color:var(--gold);font-weight:700">'+(running[m]||0)+'/'+maxBirds+'</span></div>';
+    });
+    html += '</div>';
+    if(fs5.round===1){
+      html += '<button onclick="fs5StartRound2()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; START ROUND 2</button>';
+    } else {
+      // Grand totals
+      var r1={}, r2={};
+      members.forEach(function(m){ r1[m]=0; r2[m]=0; });
+      for(var rot=0;rot<5;rot++){
+        members.forEach(function(m){
+          r1[m]+=(fs5.scores[1][rot][m]||0);
+          r2[m]+=(fs5.scores[2][rot][m]||0);
+        });
+      }
+      html += '<div style="font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--hit);letter-spacing:2px;margin:12px 0 8px">GRAND TOTAL — 50 BIRDS</div>'
+        +'<div style="background:var(--surf2);border-radius:10px;padding:12px;margin-bottom:16px">'
+        +'<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;padding:4px 0 8px;border-bottom:1px solid var(--bdr);font-family:DM Mono,monospace;font-size:10px;color:var(--dim)">'
+        +'<div>SHOOTER</div><div style="text-align:center">RND1</div><div style="text-align:center">RND2</div><div style="text-align:right">TOTAL</div></div>';
+      members.forEach(function(m){
+        html += '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:13px">'
+          +'<div style="color:var(--txt)">'+m.split(' ')[0]+'</div>'
+          +'<div style="color:var(--dim);text-align:center">'+r1[m]+'/'+maxBirds+'</div>'
+          +'<div style="color:var(--dim);text-align:center">'+r2[m]+'/'+maxBirds+'</div>'
+          +'<div style="color:var(--gold);font-weight:700;text-align:right">'+(r1[m]+r2[m])+'/'+(maxBirds*2)+'</div></div>';
+      });
+      html += '</div><button onclick="switchToTrapper()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer">&#8617; SIGN OUT</button>';
+    }
+  }
+  html += '</div>';
+  el.innerHTML = html;
+  document.getElementById('tr-empty').style.display='none';
+  document.getElementById('tr-screen-squads').style.display='block';
+  document.getElementById('tr-screen-scoring').style.display='none';
+}
+
+function fs5Rotate(){
+  fs5.rotation++;
+  fs5.shooterIdx=0;
+  fs5.scored=0;
+  fs5PickFirst();
+}
+
+function fs5StartRound2(){
+  fs5.round=2;
+  fs5.rotation=0;
+  fs5.shooterIdx=0;
+  fs5.scored=0;
+  fs5PickFirst();
+}
+// ═══════════════════════════════
+
 function startScoringSquad(squadIdx, keepStation) {
+  if(S.eventType==='5STAND'){ fs5Init(squadIdx); return; }
   trapSquadIdx = squadIdx;
   var squads   = S.squads.length ? S.squads : [{num:1, label:'1', members:S.shooters}];
   var squad    = squads[squadIdx];
