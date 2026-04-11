@@ -2091,7 +2091,6 @@ function fiveStandScoreNext(){
 }
 
 function fiveStandSubmit(){
-  toast('5S SUBMIT fired! scored:'+fs.scored+' stand:'+fs.stand,'green');
   var dead=0, lost=0;
   trapBirds.forEach(function(b){ if(b===true)dead++; if(b===false)lost++; });
   
