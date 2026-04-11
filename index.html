@@ -2053,7 +2053,10 @@ function fiveStandPickFirst(){
     html += '<button onclick="fiveStandSetFirst('+i+')" style="display:block;width:100%;text-align:left;background:var(--surf);border:3px solid var(--gold);border-radius:10px;padding:20px 18px;margin-bottom:12px;font-size:22px;font-weight:700;color:var(--txt);cursor:pointer;font-family:DM Sans,sans-serif;-webkit-tap-highlight-color:transparent">'+name+'</button>';
   });
   el.innerHTML = html;
-  trShow('squads');
+  // Show squads screen directly WITHOUT triggering buildSquadList
+  document.getElementById('tr-empty').style.display = 'none';
+  document.getElementById('tr-screen-squads').style.display = 'block';
+  document.getElementById('tr-screen-scoring').style.display = 'none';
   // Attach touch handlers after rendering
   setTimeout(function(){
     var btns = el.querySelectorAll('button');
@@ -2094,6 +2097,7 @@ function fiveStandScoreNext(){
 }
 
 function fiveStandSubmit(){
+  toast('5S SUBMIT fired! scored:'+fs.scored+' stand:'+fs.stand,'green');
   var dead=0, lost=0;
   trapBirds.forEach(function(b){ if(b===true)dead++; if(b===false)lost++; });
   
@@ -2213,10 +2217,11 @@ function fiveStandShowSummary(){
   }
   html += '</div>';
   el.innerHTML = html;
-  trShow('squads');
+  // Show squads screen directly WITHOUT triggering buildSquadList
+  document.getElementById('tr-empty').style.display = 'none';
+  document.getElementById('tr-screen-squads').style.display = 'block';
+  document.getElementById('tr-screen-scoring').style.display = 'none';
 }
-
-function fiveStandNextStand(){
   fs.stand++;
   fs.shooterIdx = 0;
   fs.scored = 0;
