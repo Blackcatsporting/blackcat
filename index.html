@@ -2325,6 +2325,9 @@ function fs5ScoreNext(){
   trShow('scoring');
   buildTrapperBirds();
   document.getElementById('tr-submit-btn').onclick = function(){ fs5Submit(); };
+  // Update board to show scoring
+  var squad = S.squads[fs5.squadIdx];
+  updateStationStatus(fs5.rotation+1, squad.label||squad.num, squad.members, 'scoring');
 }
 
 function fs5Submit(){
@@ -2357,6 +2360,8 @@ function fs5Submit(){
 
 function fs5ShowSummary(){
   var squad = S.squads[fs5.squadIdx];
+  // Update board to waiting between rotations
+  updateStationStatus(fs5.rotation+1, squad.label||squad.num, squad.members, 'waiting');
   var members = squad.members;
   var birds = S.stationBirds[fs5.rotation]||S.birds||5;
   var el = document.getElementById('tr-squad-list');
