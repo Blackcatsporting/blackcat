@@ -362,7 +362,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
     </div>
     <div style="display:flex;gap:10px;margin-bottom:10px">
       <button class="btn btn-grey" onclick="trapCancelSquad()" type="button" style="flex:0 0 auto;padding:14px 16px">&#8592; Squads</button>
-      <button class="btn btn-org btn-full" id="tr-submit-btn" type="button" style="font-size:14px;padding:14px">&#10003; Submit</button>
+      <button class="btn btn-org btn-full" id="tr-submit-btn" type="button" style="font-size:14px;padding:14px" onclick="trapSubmitConfirm()">&#10003; Submit</button>
     </div>
     <div style="display:flex;gap:8px">
       <button type="button" onclick="trapSkipShooter()" style="flex:1;padding:10px;background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;color:var(--dim);font-family:DM Mono,monospace;font-size:11px;letter-spacing:1px;cursor:pointer;text-transform:uppercase">⏭ Skip</button>
@@ -2330,7 +2330,8 @@ function fs5ScoreNext(){
   document.getElementById('tr-name').textContent = name;
   trShow('scoring');
   buildTrapperBirds();
-  document.getElementById('tr-submit-btn').onclick = function(){ fs5Submit(); };
+  document.getElementById('tr-submit-btn').onclick = function(){ trapSubmitConfirm(); };
+  document.getElementById('tr-submit-btn').dataset.mode = '5stand';
   // Update board to show scoring
   var squad = S.squads[fs5.squadIdx];
   updateStationStatus(fs5.rotation+1, squad.label||squad.num, squad.members, 'scoring');
@@ -2598,7 +2599,8 @@ function scoreCurrentMember() {
   document.getElementById('tr-squad-label').textContent = 'SQUAD ' + (squad.label||squad.num) + ' — ' + stationLabelShort() + ' ' + (trapStation+1);
   document.getElementById('tr-progress').textContent    = 'Shooter ' + (trapScoredCount+1) + ' of ' + members.length;
   document.getElementById('tr-name').textContent        = trapShooter;
-  document.getElementById('tr-submit-btn').onclick      = function() { trapSubmit(); };
+  document.getElementById('tr-submit-btn').onclick = function() { trapSubmitConfirm(); };
+  document.getElementById('tr-submit-btn').dataset.mode = 'sc';
 
   trShow('scoring');
   buildTrapperBirds();
@@ -2787,6 +2789,33 @@ function buildTrapperBirds() {
       submitBtn.innerHTML = '&#10003; Submit';
     }
   }
+}
+
+var _submitConfirmTimer = null;
+
+function trapSubmitConfirm(){
+  var btn = document.getElementById('tr-submit-btn');
+  if(!btn || btn.disabled) return;
+  // Already in confirm mode — submit
+  if(btn.dataset.confirming === '1'){
+    clearTimeout(_submitConfirmTimer);
+    btn.dataset.confirming = '0';
+    btn.innerHTML = '&#10003; Submit';
+    btn.style.background = 'var(--org)';
+    // Call the right submit function
+    if(btn.dataset.mode === '5stand') fs5Submit();
+    else trapSubmit();
+    return;
+  }
+  // Enter confirm mode
+  btn.dataset.confirming = '1';
+  btn.innerHTML = '&#10003; ARE YOU SURE? &nbsp; YES';
+  btn.style.background = 'var(--hit)';
+  _submitConfirmTimer = setTimeout(function(){
+    btn.dataset.confirming = '0';
+    btn.innerHTML = '&#10003; Submit';
+    btn.style.background = 'var(--org)';
+  }, 3000);
 }
 
 function trapSubmit() {
