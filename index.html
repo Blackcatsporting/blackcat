@@ -2563,52 +2563,47 @@ function scoreCurrentMember() {
 
     trShow('squads');
     if(isAssigned){
-      var nextStation = (trapStation + 1) % S.stations;
-      // Check if all stations done using Firebase log
       var squadLabel2 = squad.label||squad.num;
       var squadMembers2 = squad.members||[];
-      db.ref(getKey()+'/ct_admin').once('value').then(function(logSnap){
-        var logRaw = logSnap.val();
-        var logArr = logRaw ? (Array.isArray(logRaw) ? logRaw : Object.values(logRaw)) : [];
-        var stDoneMap = {};
-        logArr.forEach(function(r){
-          var k = r.shooter ? r.shooter.trim().toLowerCase() : '';
-          if(squadMembers2.some(function(m){ return m.trim().toLowerCase()===k; })){
-            if(!stDoneMap[r.station]) stDoneMap[r.station]={};
-            stDoneMap[r.station][k]=true;
-          }
-        });
-        var completedSt = 0;
-        Object.keys(stDoneMap).forEach(function(st){
-          if(Object.keys(stDoneMap[st]).length>=squadMembers2.length) completedSt++;
-        });
-        var totalStationsForSquad = (window._customStations && window._customStations.length) ? window._customStations.length : S.stations;
-        if(completedSt >= totalStationsForSquad){
-          updateStationStatus(trapStation+1, squadLabel2, squadMembers2, 'complete');
-          var el3 = document.getElementById('tr-squad-list');
-          if(el3) el3.innerHTML = '<div style="text-align:center;padding:40px 20px">'
-+'<div style="font-family:Bebas Neue,sans-serif;font-size:36px;color:var(--hit);letter-spacing:3px;margin-bottom:10px">&#10003; ALL STATIONS COMPLETE</div>'
-            +'<div style="font-family:DM Mono,monospace;font-size:13px;color:var(--dim);letter-spacing:2px;margin-bottom:30px">Squad '+squadLabel2+' — Event Complete</div>'
-            +'<button onclick="switchToTrapper()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:12px">&#8617; SIGN OUT</button>'
-            +'<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px">Tap anywhere to sign out</div>'
-            +'</div>';
-        } else {
-          // Calculate next station
-          var nextSt;
-          if(window._customStations && window._customStations.length){
-            var nextIdx = (window._customStationIdx||0) + 1;
-            nextSt = nextIdx < window._customStations.length ? window._customStations[nextIdx] : trapStation;
-          } else {
-            nextSt = (trapStation + 1) % S.stations;
-          }
-          var el3 = document.getElementById('tr-squad-list');
-          if(el3) el3.innerHTML = '<div style="text-align:center;padding:40px 20px">'
-            +'<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:10px">&#10003; STATION '+(trapStation+1)+' COMPLETE</div>'
-            +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);margin-bottom:20px">Squad '+squadLabel2+' scored</div>'
-            +'<button onclick="moveToNextStation()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; Move to Station '+(nextSt+1)+'</button>'
-            +'</div>';
+      var totalStationsForSquad = (window._customStations && window._customStations.length) ? window._customStations.length : S.stations;
+      // Use adminLog in memory — most current
+      var logArr = adminLog.length ? adminLog : JSON.parse(localStorage.getItem('ct_admin')||'[]');
+      var stDoneMap = {};
+      logArr.forEach(function(r){
+        var k = r.shooter ? r.shooter.trim().toLowerCase() : '';
+        if(squadMembers2.some(function(m){ return m.trim().toLowerCase()===k; })){
+          if(!stDoneMap[r.station]) stDoneMap[r.station]={};
+          stDoneMap[r.station][k]=true;
         }
       });
+      var completedSt = 0;
+      Object.keys(stDoneMap).forEach(function(st){
+        if(Object.keys(stDoneMap[st]).length>=squadMembers2.length) completedSt++;
+      });
+      if(completedSt >= totalStationsForSquad){
+        updateStationStatus(trapStation+1, squadLabel2, squadMembers2, 'complete');
+        var el3 = document.getElementById('tr-squad-list');
+        if(el3) el3.innerHTML = '<div style="text-align:center;padding:40px 20px">'
+          +'<div style="font-family:Bebas Neue,sans-serif;font-size:36px;color:var(--hit);letter-spacing:3px;margin-bottom:10px">&#10003; ALL STATIONS COMPLETE</div>'
+          +'<div style="font-family:DM Mono,monospace;font-size:13px;color:var(--dim);letter-spacing:2px;margin-bottom:30px">Squad '+squadLabel2+' — Event Complete</div>'
+          +'<button onclick="switchToTrapper()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:12px">&#8617; SIGN OUT</button>'
+          +'<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px">Tap anywhere to sign out</div>'
+          +'</div>';
+      } else {
+        var nextSt;
+        if(window._customStations && window._customStations.length){
+          var nextIdx = (window._customStationIdx||0) + 1;
+          nextSt = nextIdx < window._customStations.length ? window._customStations[nextIdx] : trapStation;
+        } else {
+          nextSt = (trapStation + 1) % S.stations;
+        }
+        var el3 = document.getElementById('tr-squad-list');
+        if(el3) el3.innerHTML = '<div style="text-align:center;padding:40px 20px">'
+          +'<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:10px">&#10003; STATION '+(trapStation+1)+' COMPLETE</div>'
+          +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);margin-bottom:20px">Squad '+squadLabel2+' scored</div>'
+          +'<button onclick="moveToNextStation()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; Move to Station '+(nextSt+1)+'</button>'
+          +'</div>';
+      }
     } else {
       buildSquadList();
       toast('Squad ' + (squad.label||squad.num) + ' complete!', 'green');
