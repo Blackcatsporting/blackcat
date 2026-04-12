@@ -2546,13 +2546,6 @@ function scoreCurrentMember() {
   if (trapScoredCount >= members.length) {
     trapScoredCount = 0;
 
-    // For 5-Stand: trapSubmit handles completion directly, not scoreCurrentMember
-    // This path should not be reached for 5-Stand, but guard just in case
-    if(S.eventType === '5STAND'){
-      handle5StandStationComplete(squad);
-      return;
-    }
-
     var sqKey = (squad.label||squad.num) + '_' + trapStation;
     scoredSquadKeys[sqKey] = true;
 
@@ -2565,38 +2558,21 @@ function scoreCurrentMember() {
     if(isAssigned){
       var squadLabel2 = squad.label||squad.num;
       var squadMembers2 = squad.members||[];
-      var totalStationsForSquad = (window._customStations && window._customStations.length) ? window._customStations.length : S.stations;
-      // Use adminLog in memory — most current
-      var logArr = adminLog.length ? adminLog : JSON.parse(localStorage.getItem('ct_admin')||'[]');
-      var stDoneMap = {};
-      logArr.forEach(function(r){
-        var k = r.shooter ? r.shooter.trim().toLowerCase() : '';
-        if(squadMembers2.some(function(m){ return m.trim().toLowerCase()===k; })){
-          if(!stDoneMap[r.station]) stDoneMap[r.station]={};
-          stDoneMap[r.station][k]=true;
-        }
-      });
+      // Count completed stations from scoredSquadKeys
       var completedSt = 0;
-      Object.keys(stDoneMap).forEach(function(st){
-        if(Object.keys(stDoneMap[st]).length>=squadMembers2.length) completedSt++;
-      });
-      if(completedSt >= totalStationsForSquad){
+      for(var si=0; si<S.stations; si++){
+        if(scoredSquadKeys[squadLabel2+'_'+si]) completedSt++;
+      }
+      if(completedSt >= S.stations){
         updateStationStatus(trapStation+1, squadLabel2, squadMembers2, 'complete');
         var el3 = document.getElementById('tr-squad-list');
         if(el3) el3.innerHTML = '<div style="text-align:center;padding:40px 20px">'
           +'<div style="font-family:Bebas Neue,sans-serif;font-size:36px;color:var(--hit);letter-spacing:3px;margin-bottom:10px">&#10003; ALL STATIONS COMPLETE</div>'
           +'<div style="font-family:DM Mono,monospace;font-size:13px;color:var(--dim);letter-spacing:2px;margin-bottom:30px">Squad '+squadLabel2+' — Event Complete</div>'
           +'<button onclick="switchToTrapper()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:12px">&#8617; SIGN OUT</button>'
-          +'<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px">Tap anywhere to sign out</div>'
           +'</div>';
       } else {
-        var nextSt;
-        if(window._customStations && window._customStations.length){
-          var nextIdx = (window._customStationIdx||0) + 1;
-          nextSt = nextIdx < window._customStations.length ? window._customStations[nextIdx] : trapStation;
-        } else {
-          nextSt = (trapStation + 1) % S.stations;
-        }
+        var nextSt = (trapStation + 1) % S.stations;
         var el3 = document.getElementById('tr-squad-list');
         if(el3) el3.innerHTML = '<div style="text-align:center;padding:40px 20px">'
           +'<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:10px">&#10003; STATION '+(trapStation+1)+' COMPLETE</div>'
