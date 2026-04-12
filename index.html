@@ -2855,6 +2855,7 @@ function trapSubmit() {
     dead:    dead,
     lost:    lost,
     total:   S.stationBirds[trapStation] || S.birds,
+    birds:   trapBirds.slice(),
     round:   S.name,
     trapper: trapperName || 'Unknown',
     eventType: S.eventType || 'SC',
@@ -4135,11 +4136,11 @@ function drawScorecard(){
     html+='<div style="display:flex;align-items:center;padding:10px 16px;background:'+rowBg+';border-bottom:1px solid var(--bdr)">';
     html+='<div style="font-family:Bebas Neue,sans-serif;font-size:16px;color:var(--gold);width:100px;letter-spacing:1px">'+stationLabel()+' '+(i+1)+'</div>';
     if(st){
-      // Show individual bird results if available
-      var birds = S.scores && S.scores[shooter] && S.scores[shooter][i];
+      // Show individual bird results from log
+      var logEntry = shooterLog.find(function(r){ return r.station===i; });
       var birdsHtml = '';
-      if(birds && birds.length){
-        birdsHtml = birds.map(function(b){
+      if(logEntry && logEntry.birds && logEntry.birds.length){
+        birdsHtml = logEntry.birds.map(function(b){
           if(b===true) return '<span style="color:var(--hit);font-weight:700">X</span>';
           if(b===false) return '<span style="color:var(--miss);font-weight:700">O</span>';
           return '<span style="color:var(--bdr)">-</span>';
