@@ -2259,10 +2259,8 @@ function buildSquadList() {
 
 function moveToNextStation(){
   if(window._customStations && window._customStations.length){
-    // Use custom station list
     window._customStationIdx = (window._customStationIdx||0) + 1;
     if(window._customStationIdx >= window._customStations.length){
-      // All custom stations done — show complete
       trapStation = window._customStations[window._customStations.length-1];
     } else {
       trapStation = window._customStations[window._customStationIdx];
@@ -2270,7 +2268,7 @@ function moveToNextStation(){
   } else {
     trapStation = (trapStation + 1) % S.stations;
   }
-  scoredSquadKeys = {};
+  // Do NOT reset scoredSquadKeys — needed for completion check
   var stSel = document.getElementById('tr-st');
   if(stSel) stSel.value = String(trapStation);
   if(trapAssignedSquad) updateStationStatus(trapStation+1, trapAssignedSquad, [], 'waiting');
@@ -2558,12 +2556,13 @@ function scoreCurrentMember() {
     if(isAssigned){
       var squadLabel2 = squad.label||squad.num;
       var squadMembers2 = squad.members||[];
-      // Count completed stations from scoredSquadKeys
+      // Count all unique stations scored for this squad across all keys
       var completedSt = 0;
       for(var si=0; si<S.stations; si++){
         if(scoredSquadKeys[squadLabel2+'_'+si]) completedSt++;
       }
-      if(completedSt >= S.stations){
+      var totalSt = (window._customStations && window._customStations.length) ? window._customStations.length : S.stations;
+      if(completedSt >= totalSt){
         updateStationStatus(trapStation+1, squadLabel2, squadMembers2, 'complete');
         var el3 = document.getElementById('tr-squad-list');
         if(el3) el3.innerHTML = '<div style="text-align:center;padding:40px 20px">'
