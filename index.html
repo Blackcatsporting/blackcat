@@ -4083,7 +4083,7 @@ function drawScorecard(){
   var shooter=sel.value;
   if(!shooter) return;
 
-  var log = JSON.parse(localStorage.getItem('ct_admin')||'[]');
+  var log = adminLog.length ? adminLog : JSON.parse(localStorage.getItem('ct_admin')||'[]');
   var shooterLog = log.filter(function(r){ return r.shooter===shooter; });
 
   var stationData = {};
