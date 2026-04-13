@@ -155,11 +155,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
   <div class="tab"     onclick="go('history')">History</div>
 </div>
 
-<!-- SETUP -->
-<div id="pg-setup" class="pg">
-  <div class="card">
-
-<!-- SHOOTER VIEW (inside app-wrap, shown via QR link) -->
+<!-- SHOOTER VIEW -->
 <div id="shooter-screen" style="display:none;padding:16px;max-width:600px;margin:0 auto;min-height:100vh">
   <div style="text-align:center;padding:16px 0 20px">
     <div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:#00aaff;letter-spacing:3px">📊 LIVE SCORECARD</div>
@@ -176,6 +172,10 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
     <button onclick="location.reload()" style="background:none;border:1px solid var(--bdr);border-radius:8px;color:var(--dim);font-family:DM Mono,monospace;font-size:11px;letter-spacing:1px;padding:8px 20px;cursor:pointer">✕ Exit</button>
   </div>
 </div>
+
+<!-- SETUP -->
+<div id="pg-setup" class="pg">
+  <div class="card">
     <div class="ctitle">Event Setup</div>
     <label class="lbl">Gun Club Name</label>
     <input id="ev-club" class="inp" type="text" placeholder="Silverbrook Gun Club" style="margin-bottom:12px" oninput="checkClubFormat(this.value)">
@@ -313,23 +313,6 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
   </div>
 </div>
 
-<!-- SHOOTER VIEW -->
-<div id="shooter-screen" style="display:none;padding:16px;max-width:600px;margin:0 auto;min-height:100vh;background:var(--bg)">
-  <div style="text-align:center;padding:16px 0 20px">
-    <div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:#00aaff;letter-spacing:3px">📊 LIVE SCORECARD</div>
-    <div id="shooter-event-name" style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-top:4px"></div>
-  </div>
-  <div id="shooter-name-entry" style="margin-bottom:16px">
-    <div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:8px;text-align:center">ENTER YOUR NAME TO SEE YOUR SCORECARD</div>
-    <input id="shooter-name-inp" class="inp" type="text" placeholder="Your name…" style="font-size:18px;padding:14px;margin-bottom:12px;text-align:center">
-    <button onclick="shooterEnterName()" style="display:block;width:100%;padding:14px;background:#00aaff;border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">▶ SEE MY SCORES</button>
-  </div>
-  <div id="shooter-my-score" style="display:none"></div>
-  <div id="shooter-leaderboard" style="margin-top:16px"></div>
-  <div style="text-align:center;margin-top:20px">
-    <button onclick="location.reload()" style="background:none;border:1px solid var(--bdr);border-radius:8px;color:var(--dim);font-family:DM Mono,monospace;font-size:11px;letter-spacing:1px;padding:8px 20px;cursor:pointer">✕ Exit</button>
-  </div>
-</div>
 <div id="pg-trapper" class="pg">
 
   <!-- SCREEN A: Not started -->
@@ -4701,7 +4684,9 @@ setInterval(function(){
     initFirebase();
     // Check if this is a shooter view URL
     if(window.location.search.indexOf('view=') !== -1){
-      initShooterView();
+      var _sTimer = setInterval(function(){
+        if(db){ clearInterval(_sTimer); initShooterView(); }
+      }, 100);
     }
 
     function getKey(){ return localStorage.getItem('ct_event_key')||'DEFAULT'; }
