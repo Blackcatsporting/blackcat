@@ -757,6 +757,9 @@ function generateShooterQR(eventKey){
   var url = 'https://blackcatclayscoring.com/?view=' + eventKey;
   if(typeof QRCode !== 'undefined'){
     new QRCode(el, {text:url, width:160, height:160, colorDark:'#000000', colorLight:'#ffffff'});
+  } else {
+    // Fallback — show URL if QR library didn't load
+    el.innerHTML = '<div style="font-family:DM Mono,monospace;font-size:10px;color:#00aaff;word-break:break-all;padding:8px">'+url+'</div>';
   }
 }
 
