@@ -95,18 +95,8 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <!-- build:1774913489 -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
-<script>
-  // If this is a shooter QR scan, hide startup overlay immediately
-  if(window.location.search.indexOf('view=') !== -1){
-    document.addEventListener('DOMContentLoaded', function(){
-      var o = document.getElementById('startup-overlay');
-      if(o) o.style.display = 'none';
-    });
-  }
-</script>
 <!-- STARTUP MODAL -->
 <div id="startup-overlay" style="display:flex;position:fixed;top:0;left:0;width:100vw;height:100vh;background:#0f0f07;z-index:99999;align-items:center;justify-content:center;padding:24px;box-sizing:border-box">
   <div style="width:100%;max-width:400px">
@@ -153,24 +143,6 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
   <div class="tab"     onclick="go('admin')">Admin</div>
   <div class="tab"     onclick="go('scorecard')">Scorecard</div>
   <div class="tab"     onclick="go('history')">History</div>
-</div>
-
-<!-- SHOOTER VIEW -->
-<div id="shooter-screen" style="display:none;padding:16px;max-width:600px;margin:0 auto;min-height:100vh">
-  <div style="text-align:center;padding:16px 0 20px">
-    <div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:#00aaff;letter-spacing:3px">📊 LIVE SCORECARD</div>
-    <div id="shooter-event-name" style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-top:4px"></div>
-  </div>
-  <div id="shooter-name-entry" style="margin-bottom:16px">
-    <div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:8px;text-align:center">ENTER YOUR NAME TO SEE YOUR SCORECARD</div>
-    <input id="shooter-name-inp" class="inp" type="text" placeholder="Your name…" style="font-size:18px;padding:14px;margin-bottom:12px;text-align:center">
-    <button onclick="shooterEnterName()" style="display:block;width:100%;padding:14px;background:#00aaff;border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">▶ SEE MY SCORES</button>
-  </div>
-  <div id="shooter-my-score" style="display:none"></div>
-  <div id="shooter-leaderboard" style="margin-top:16px"></div>
-  <div style="text-align:center;margin-top:20px">
-    <button onclick="location.reload()" style="background:none;border:1px solid var(--bdr);border-radius:8px;color:var(--dim);font-family:DM Mono,monospace;font-size:11px;letter-spacing:1px;padding:8px 20px;cursor:pointer">✕ Exit</button>
-  </div>
 </div>
 
 <!-- SETUP -->
@@ -261,10 +233,6 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
   <div id="event-code-display" style="display:none;margin-top:12px;background:var(--surf);border:2px solid var(--gold);border-radius:10px;padding:14px;text-align:center">
     <div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:2px;margin-bottom:6px">SHARE THIS EVENT CODE WITH TRAPPERS</div>
     <div id="event-code-value" style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--gold);letter-spacing:3px;word-break:break-all"></div>
-    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bdr)">
-      <div style="font-family:DM Mono,monospace;font-size:10px;color:#00aaff;letter-spacing:2px;margin-bottom:8px">📊 SHOOTER QR CODE — SCAN TO VIEW LIVE SCORES</div>
-      <div id="shooter-qr" style="display:inline-block;background:#fff;padding:10px;border-radius:8px"></div>
-    </div>
   </div>
   <button class="btn btn-grey btn-full" onclick="newEvent()" style="font-size:13px;padding:12px;margin-top:10px">🗑 Clear & Start New Event</button>
 </div>
@@ -1787,7 +1755,6 @@ function startRound(){
   var codeVal = document.getElementById('event-code-value');
   if(codeDisp) codeDisp.style.display='block';
   if(codeVal) codeVal.textContent = key;
-  generateShooterQR(key);
   toast('Round started!','green');
   // Restart all Firebase listeners with correct event key
   restartFirebaseListeners();
@@ -4682,12 +4649,7 @@ setInterval(function(){
       } catch(e) {  }
     }
     initFirebase();
-    // Check if this is a shooter view URL
-    if(window.location.search.indexOf('view=') !== -1){
-      var _sTimer = setInterval(function(){
-        if(db){ clearInterval(_sTimer); initShooterView(); }
-      }, 100);
-    }
+
 
     function getKey(){ return localStorage.getItem('ct_event_key')||'DEFAULT'; }
 
