@@ -182,7 +182,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
     <input id="ev-st" class="inp" type="number" value="10" min="1" max="50" onchange="buildStationBirdsList()" oninput="buildStationBirdsList()" style="max-width:120px">
     <span style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);margin-left:8px;letter-spacing:1px">Max 50</span></div>
     <div class="mt12">
-      <label class="lbl">Birds per Station</label>
+      <label class="lbl" id="lbl-birds-per">Birds per Station</label>
       <div class="info" style="margin-bottom:8px">Set the default then adjust individual stations below.</div>
       <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
         <input id="ev-birds" class="inp" type="number" value="10" min="1" max="25" style="max-width:100px">
@@ -1583,6 +1583,8 @@ function setEventType(type){
   if(type==='FITASC'){
     if(fitBtn){ fitBtn.className='btn btn-org'; fitBtn.style.flex='1'; fitBtn.style.padding='12px'; fitBtn.style.fontSize='13px'; }
     if(stLbl) stLbl.textContent = 'Parcours';
+    var bpLbl = document.getElementById('lbl-birds-per');
+    if(bpLbl) bpLbl.textContent = 'Birds per Peg';
   } else if(type==='5STAND'){
     if(s5Btn){ s5Btn.className='btn btn-gold'; s5Btn.style.flex='1'; s5Btn.style.padding='12px'; s5Btn.style.fontSize='13px'; }
     if(stLbl) stLbl.textContent = 'Stands';
@@ -1596,17 +1598,19 @@ function setEventType(type){
   } else {
     if(scBtn){ scBtn.className='btn btn-gold'; scBtn.style.flex='1'; scBtn.style.padding='12px'; scBtn.style.fontSize='13px'; }
     if(stLbl) stLbl.textContent = 'Stations';
+    var bpLbl2 = document.getElementById('lbl-birds-per');
+    if(bpLbl2) bpLbl2.textContent = 'Birds per Station';
   }
 }
 
 // Returns the correct term based on event type
 function stationLabel(){
-  if(S.eventType==='FITASC')  return 'Parcours';
+  if(S.eventType==='FITASC')  return 'Peg';
   if(S.eventType==='5STAND')  return 'Stand';
   return 'Station';
 }
 function stationLabelShort(){
-  if(S.eventType==='FITASC')  return 'PAR';
+  if(S.eventType==='FITASC')  return 'PEG';
   if(S.eventType==='5STAND')  return 'STD';
   return 'STA';
 }
