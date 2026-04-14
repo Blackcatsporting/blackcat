@@ -179,7 +179,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
       </div>
     </div>
     <div class="mt12"><label class="lbl" id="lbl-stations">Stations</label>
-    <input id="ev-st" class="inp" type="number" value="10" min="1" max="50" onchange="buildStationBirdsList()" oninput="buildStationBirdsList()" style="max-width:120px">
+    <input id="ev-st" class="inp" type="number" value="10" min="1" max="50" onchange="buildStationBirdsList(S.eventType)" oninput="buildStationBirdsList(S.eventType)" style="max-width:120px">
     <span style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);margin-left:8px;letter-spacing:1px">Max 50</span></div>
     <div class="mt12">
       <label class="lbl" id="lbl-birds-per">Birds per Station</label>
@@ -1538,18 +1538,20 @@ function applyManualSquads(){
 }
 // ── END MANUAL SQUAD BUILDER ──────────────────────────────────────────────────
 
-function buildStationBirdsList(){
+function buildStationBirdsList(overrideType){
+  var eventType = overrideType || S.eventType || 'SC';
   var n=parseInt(document.getElementById('ev-st').value)||10;
   var def=parseInt(document.getElementById('ev-birds').value)||10;
   var el=document.getElementById('station-birds-list');
   if(!el) return;
   el.innerHTML='';
+  var lbl_word = eventType==='FITASC' ? 'Peg' : eventType==='5STAND' ? 'Stand' : 'Station';
   for(var i=0;i<n;i++){
     var row=document.createElement('div');
     row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bdr)';
     var lbl=document.createElement('div');
     lbl.style.cssText='font-family:DM Mono,monospace;font-size:13px;color:var(--txt)';
-    lbl.textContent=stationLabel()+' '+(i+1);
+    lbl.textContent=lbl_word+' '+(i+1);
     var inp=document.createElement('input');
     inp.type='number'; inp.min='1'; inp.max='25'; inp.value=def;
     inp.id='st-birds-'+i;
@@ -1585,7 +1587,7 @@ function setEventType(type){
     if(stLbl) stLbl.textContent = 'Parcours';
     var bpLbl = document.getElementById('lbl-birds-per');
     if(bpLbl) bpLbl.textContent = 'Birds per Peg';
-    buildStationBirdsList();
+    buildStationBirdsList('FITASC');
   } else if(type==='5STAND'){
     if(s5Btn){ s5Btn.className='btn btn-gold'; s5Btn.style.flex='1'; s5Btn.style.padding='12px'; s5Btn.style.fontSize='13px'; }
     if(stLbl) stLbl.textContent = 'Stands';
@@ -1594,14 +1596,14 @@ function setEventType(type){
     var bInp  = document.getElementById('ev-birds');
     if(stInp){ stInp.value='5'; }
     if(bInp){ bInp.value='5'; }
-    buildStationBirdsList();
+    buildStationBirdsList('5STAND');
     applyDefaultBirds();
   } else {
     if(scBtn){ scBtn.className='btn btn-gold'; scBtn.style.flex='1'; scBtn.style.padding='12px'; scBtn.style.fontSize='13px'; }
     if(stLbl) stLbl.textContent = 'Stations';
     var bpLbl2 = document.getElementById('lbl-birds-per');
     if(bpLbl2) bpLbl2.textContent = 'Birds per Station';
-    buildStationBirdsList();
+    buildStationBirdsList('SC');
   }
 }
 
@@ -1694,7 +1696,7 @@ function newEvent(){
   document.getElementById('paste-box').value='';
   document.getElementById('paste-prev').style.display='none';
 
-  buildStationBirdsList();
+  buildStationBirdsList('SC');
   buildFitascSetup();
   drawChips();
 
@@ -4582,7 +4584,7 @@ function delRound(id){histLog=histLog.filter(function(r){return r.id!==id;});loc
 document.getElementById('sh-inp').addEventListener('keydown',function(e){if(e.key==='Enter')addShooter();});
 document.getElementById('roster-inp').addEventListener('keydown',function(e){if(e.key==='Enter')addRosterMember();});
 drawChips();
-buildStationBirdsList();
+buildStationBirdsList('SC');
 renderManualSquads();
 
 // On every page load, check if admin cleared recently (within 5 minutes)
