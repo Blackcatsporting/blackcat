@@ -4697,8 +4697,19 @@ function renderFitascSetup(){
       // Total per peg
       var pegTotal = (peg.singles||5) + (peg.pairs||2)*2;
       var tLbl = document.createElement('div');
+      tLbl.id = 'fitasc-peg-total-p'+pi+'-g'+pegi;
       tLbl.style.cssText = 'font-family:DM Mono,monospace;font-size:11px;color:var(--dim);margin-left:4px';
       tLbl.textContent = '= '+pegTotal;
+
+      // Wire inputs to update peg total
+      var updatePegTotal = (function(sI, pI, tId){ return function(){
+        var s = parseInt(sI.value)||0;
+        var p = parseInt(pI.value)||0;
+        var tel = document.getElementById(tId);
+        if(tel) tel.textContent = '= '+(s + p*2);
+      }; })(sInp, pInp, 'fitasc-peg-total-p'+pi+'-g'+pegi);
+      sInp.addEventListener('input', updatePegTotal);
+      pInp.addEventListener('input', updatePegTotal);
 
       var removeBtn = document.createElement('button');
       removeBtn.type='button';
