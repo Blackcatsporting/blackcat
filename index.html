@@ -2629,7 +2629,8 @@ var fitascE = {
 
 function fitascEInit(squadIdx){
   fitascE.squadIdx = squadIdx;
-  fitascE.parcours = window._assignedParcours || 0;
+  // Use assigned parcours if set, default to 0
+  fitascE.parcours = (window._assignedParcours !== undefined && window._assignedParcours !== null) ? parseInt(window._assignedParcours)||0 : 0;
   fitascE.peg = 0;
   fitascE.phase = 'singles';
   fitascE.shooterIdx = 0; fitascE.scored = 0; fitascE.firstShooter = 0;
@@ -2833,6 +2834,9 @@ function fitascEShowSummary(){
 
   html += '</div>';
   el.innerHTML = html;
+  // Update live board status
+  var _sq = S.squads[fitascE.squadIdx];
+  updateStationStatus(fitascE.peg+1, trapAssignedSquad||(_sq?(_sq.label||_sq.num):''), _sq?_sq.members:[], allParcoursDone ? 'complete' : 'waiting');
   var _sb=document.getElementById('tr-station-bar'), _sf=document.getElementById('tr-session-bar'), _an=document.getElementById('tr-arrival-note');
   if(_sb)_sb.style.display='none'; if(_sf)_sf.style.display='none'; if(_an)_an.style.display='none';
   document.getElementById('tr-empty').style.display='none';
@@ -4553,21 +4557,50 @@ function exportPDF(){
   });
   html += '</table>';
 
-  // Station by station
-  html += '<h3 style="margin-bottom:8px">Station Breakdown</h3>';
-  html += '<table><tr><th>Shooter</th>';
-  for(var s=0;s<numSt;s++) html += '<th>Sta '+(s+1)+'</th>';
-  html += '<th>Total</th></tr>';
-  sorted.forEach(function(e){
-    var nm=e[0], sc=e[1];
-    html += '<tr><td><strong>'+nm+'</strong></td>';
-    for(var s=0;s<numSt;s++){
-      var st = sc.stations[s];
-      html += '<td>'+(st ? st.dead+'/'+st.total : '-')+'</td>';
-    }
-    html += '<td><strong>'+sc.h+' / '+maxP+'</strong></td></tr>';
-  });
-  html += '</table>';
+  // Breakdown section
+  if(S.eventType==='FITASC' && fitascSetup.length){
+    // FITASC — breakdown by Parcours/Peg
+    html += '<h3 style="margin-bottom:8px">Peg Breakdown</h3>';
+    // Build per-shooter peg scores from log
+    var pegLog = JSON.parse(localStorage.getItem('ct_admin')||'[]');
+    fitascSetup.forEach(function(parc, pi){
+      html += '<h4 style="margin:12px 0 6px;color:#333">Parcours '+(pi+1)+'</h4>';
+      html += '<table><tr><th>Shooter</th>';
+      parc.pegs.forEach(function(peg, gi){ html += '<th>Peg '+(gi+1)+'</th>'; });
+      html += '<th>Par Total</th></tr>';
+      sorted.forEach(function(e){
+        var nm = e[0];
+        html += '<tr><td><strong>'+nm+'</strong></td>';
+        var parTotal = 0;
+        parc.pegs.forEach(function(pegDef, gi){
+          var pegBirds = (pegDef.singles||0)+(pegDef.pairs||0)*2;
+          var sEntry = pegLog.find(function(r){ return r.shooter===nm && r.station===gi && r.fitascParcours===pi && r.fitascPhase==='singles'; });
+          var pEntry = pegLog.find(function(r){ return r.shooter===nm && r.station===gi && r.fitascParcours===pi && r.fitascPhase==='pairs'; });
+          var dead = (sEntry?sEntry.dead:0)+(pEntry?pEntry.dead:0);
+          if(sEntry||pEntry){ parTotal+=dead; html += '<td>'+dead+'/'+pegBirds+'</td>'; }
+          else { html += '<td>-</td>'; }
+        });
+        html += '<td><strong>'+parTotal+'</strong></td></tr>';
+      });
+      html += '</table>';
+    });
+  } else {
+    // SC / 5-Stand — flat station breakdown
+    html += '<h3 style="margin-bottom:8px">Station Breakdown</h3>';
+    html += '<table><tr><th>Shooter</th>';
+    for(var s=0;s<numSt;s++) html += '<th>'+stationLabel()+' '+(s+1)+'</th>';
+    html += '<th>Total</th></tr>';
+    sorted.forEach(function(e){
+      var nm=e[0], sc=e[1];
+      html += '<tr><td><strong>'+nm+'</strong></td>';
+      for(var s=0;s<numSt;s++){
+        var st = sc.stations[s];
+        html += '<td>'+(st ? st.dead+'/'+st.total : '-')+'</td>';
+      }
+      html += '<td><strong>'+sc.h+' / '+maxP+'</strong></td></tr>';
+    });
+    html += '</table>';
+  }
   html += '</body></html>';
 
   var win = window.open('','_blank');
@@ -4634,7 +4667,9 @@ function drawScorecard(){
   html+='<div style="font-size:11px;font-family:DM Mono,monospace;color:var(--dim);margin-top:4px">'+new Date().toLocaleDateString()+'</div>';
   html+='</div>';
 
-  var grandDead=0, grandTotal=0;
+  var grandDead=0;
+  // Always use full event total — never subtract unsubmitted pegs
+  var grandTotal = (S.eventType==='FITASC' && fitascSetup.length) ? fitascTotalBirds() : (S.started ? (S.stationBirds.reduce(function(a,b){return a+b;},0)||S.stations*S.birds) : 0);
 
   if(S.eventType==='FITASC' && fitascSetup.length){
     // FITASC — group by Parcours
@@ -4649,7 +4684,7 @@ function drawScorecard(){
         var pairsEntry   = shooterLog.find(function(r){ return r.station===gi && r.fitascParcours===pi && r.fitascPhase==='pairs'; });
         var dead = (singlesEntry?singlesEntry.dead:0) + (pairsEntry?pairsEntry.dead:0);
         var submitted = singlesEntry || pairsEntry;
-        grandDead += dead; grandTotal += pegBirds;
+        grandDead += dead;
         var rowBg = gi%2===0 ? 'var(--surf)' : 'var(--surf2)';
         html+='<div style="display:flex;align-items:center;padding:10px 16px;background:'+rowBg+';border-bottom:1px solid var(--bdr)">';
         html+='<div style="font-family:Bebas Neue,sans-serif;font-size:15px;color:var(--gold);width:60px;letter-spacing:1px">PEG '+(gi+1)+'</div>';
@@ -4661,7 +4696,6 @@ function drawScorecard(){
           html+='<div style="font-family:Bebas Neue,sans-serif;font-size:17px;color:var(--txt);min-width:50px;text-align:right">'+dead+'/'+pegBirds+'</div>';
         } else {
           html+='<div style="flex:1;font-family:DM Mono,monospace;font-size:12px;color:var(--bdr)">not submitted</div>';
-          grandTotal -= pegBirds; // don't count unsubmitted in total
         }
         html+='</div>';
       });
