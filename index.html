@@ -318,12 +318,12 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
       <button onclick="trapperPeekAdmin()" style="background:none;border:1px solid var(--bdr);border-radius:6px;color:var(--dim);font-family:DM Mono,monospace;font-size:10px;letter-spacing:1px;padding:6px 12px;cursor:pointer">⚙ ADMIN VIEW</button>
     </div>
     <!-- Station bar -->
-    <div style="background:var(--surf);border:2px solid var(--org);border-radius:10px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px">
+    <div id="tr-station-bar" style="background:var(--surf);border:2px solid var(--org);border-radius:10px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px">
       <div id="tr-station-label" style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--org);letter-spacing:2px;white-space:nowrap">MY STATION</div>
       <select id="tr-st" class="inp" style="margin-bottom:0;flex:1" onchange="trapStation=parseInt(this.value);scoredSquadKeys={};buildSquadList()"></select>
     </div>
     <!-- Session filter -->
-    <div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:10px 16px;margin-bottom:10px">
+    <div id="tr-session-bar" style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:10px 16px;margin-bottom:10px">
       <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Filter by Session</div>
       <select id="tr-session-filter" class="inp" style="margin-bottom:0" onchange="trapSessionFilter=this.value;scoredSquadKeys={};buildSquadList()">
         <option value="">Show All Squads</option>
@@ -2653,10 +2653,16 @@ function fitascEPickFirst(){
   });
   html += '</div>';
   el.innerHTML = html;
+  // Hide sporting clays UI elements not needed for FITASC
+  var _sb = document.getElementById('tr-station-bar');
+  var _sf = document.getElementById('tr-session-bar');
+  var _an = document.getElementById('tr-arrival-note');
+  if(_sb) _sb.style.display='none';
+  if(_sf) _sf.style.display='none';
+  if(_an) _an.style.display='none';
   document.getElementById('tr-empty').style.display='none';
   document.getElementById('tr-screen-squads').style.display='block';
   document.getElementById('tr-screen-scoring').style.display='none';
-  // Touch handlers for iOS
   setTimeout(function(){
     var btns = el.querySelectorAll('button');
     btns.forEach(function(btn, i){
@@ -2826,6 +2832,12 @@ function fitascEShowSummary(){
 
   html += '</div>';
   el.innerHTML = html;
+  var _sb2 = document.getElementById('tr-station-bar');
+  var _sf2 = document.getElementById('tr-session-bar');
+  var _an2 = document.getElementById('tr-arrival-note');
+  if(_sb2) _sb2.style.display='none';
+  if(_sf2) _sf2.style.display='none';
+  if(_an2) _an2.style.display='none';
   document.getElementById('tr-empty').style.display='none';
   document.getElementById('tr-screen-squads').style.display='block';
   document.getElementById('tr-screen-scoring').style.display='none';
