@@ -2272,7 +2272,12 @@ function buildSquadList() {
   var filtered;
   if(trapAssignedSquad !== null && trapAssignedSquad !== undefined && trapAssignedSquad !== '') {
 
-    filtered = squads.filter(function(sq){ return String(sq.label||sq.num) === String(trapAssignedSquad); });
+    filtered = squads.filter(function(sq){ 
+      var sqVal = String(sq.label||sq.num) + (sq.session ? '|'+sq.session : '');
+      var assigned = String(trapAssignedSquad);
+      // Match by combined key first, fall back to label only
+      return sqVal === assigned || String(sq.label||sq.num) === assigned;
+    });
   } else if(S.eventType === '5STAND') {
     filtered = squads;
   } else if(trapSessionFilter) {
@@ -4138,6 +4143,20 @@ function drawAssign(){
     var squads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
     if(!squads.length) squads = S.squads;
 
+    // For FITASC, reload squads fresh from Firebase to ensure label match
+    if(S.eventType === 'FITASC' || !squads.length){
+      db.ref(key+'/ct_squads').once('value').then(function(sqSnap){
+        var sq = sqSnap.val();
+        if(sq){ squads = Array.isArray(sq) ? sq : Object.values(sq); }
+        renderAssignUI(trappers, squads, el);
+      });
+    } else {
+      renderAssignUI(trappers, squads, el);
+    }
+  });
+}
+
+function renderAssignUI(trappers, squads, el){
     var html = '';
     Object.values(trappers).forEach(function(trapper){
       var tKey = trapper.name.replace(/[.#$[\]]/g,'_');
@@ -4153,8 +4172,10 @@ function drawAssign(){
       html += '<select id="assign-sq-'+tKey+'" class="inp" style="margin-bottom:10px">';
       html += '<option value="">— Select Squad —</option>';
       squads.forEach(function(sq){
-        var sel = trapper.assignedSquad !== null && String(trapper.assignedSquad).trim() === String(sq.label||sq.num).trim() ? ' selected' : '';
-        html += '<option value="'+(sq.label||sq.num)+'"'+sel+'>Squad '+(sq.label||sq.num)+(sq.session?' ('+sq.session+')':'')+' — '+sq.members.join(', ')+'</option>';
+        var sqVal = String(sq.label||sq.num) + (sq.session ? '|'+sq.session : '');
+        var storedVal = String(trapper.assignedSquad||'');
+        var sel = storedVal.trim() === sqVal.trim() ? ' selected' : '';
+        html += '<option value="'+sqVal.replace(/"/g,'&quot;')+'"'+sel+'>Squad '+(sq.label||sq.num)+(sq.session?' ('+sq.session+')':'')+' — '+sq.members.slice(0,3).join(', ')+(sq.members.length>3?'...':'')+'</option>';
       });
       html += '</select>';
 
@@ -4175,9 +4196,7 @@ function drawAssign(){
       html += '<button onclick="saveAssignment(this)" data-key="'+tKey+'" data-name="'+trapper.name+'" class="btn btn-org btn-full" style="font-size:14px;padding:12px">📡 Send to Trapper</button>';
       html += '</div>';
     });
-
     el.innerHTML = html;
-  });
 }
 
 function saveAssignment(btn){
