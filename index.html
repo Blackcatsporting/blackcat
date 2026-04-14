@@ -2273,10 +2273,10 @@ function buildSquadList() {
   if(trapAssignedSquad !== null && trapAssignedSquad !== undefined && trapAssignedSquad !== '') {
 
     filtered = squads.filter(function(sq){ 
-      var sqVal = String(sq.label||sq.num) + (sq.session ? '|'+sq.session : '');
+      var lbl = String(sq.label||sq.num);
+      var sqVal = /^\d+[AB]?$/.test(lbl) && sq.session ? lbl+'|'+sq.session : lbl;
       var assigned = String(trapAssignedSquad);
-      // Match by combined key first, fall back to label only
-      return sqVal === assigned || String(sq.label||sq.num) === assigned;
+      return sqVal === assigned || lbl === assigned;
     });
   } else if(S.eventType === '5STAND') {
     filtered = squads;
@@ -4172,10 +4172,12 @@ function renderAssignUI(trappers, squads, el){
       html += '<select id="assign-sq-'+tKey+'" class="inp" style="margin-bottom:10px">';
       html += '<option value="">— Select Squad —</option>';
       squads.forEach(function(sq){
-        var sqVal = String(sq.label||sq.num) + (sq.session ? '|'+sq.session : '');
+        var lbl = String(sq.label||sq.num);
+        // For numeric labels (SC), append session to make unique. For FITASC, label is already the time string.
+        var sqVal = /^\d+[AB]?$/.test(lbl) && sq.session ? lbl+'|'+sq.session : lbl;
         var storedVal = String(trapper.assignedSquad||'');
         var sel = storedVal.trim() === sqVal.trim() ? ' selected' : '';
-        html += '<option value="'+sqVal.replace(/"/g,'&quot;')+'"'+sel+'>Squad '+(sq.label||sq.num)+(sq.session?' ('+sq.session+')':'')+' — '+sq.members.slice(0,3).join(', ')+(sq.members.length>3?'...':'')+'</option>';
+        html += '<option value="'+sqVal.replace(/"/g,'&quot;')+'"'+sel+'>Squad '+lbl+(sq.session?' ('+sq.session+')':'')+' — '+sq.members.slice(0,3).join(', ')+(sq.members.length>3?'...':'')+'</option>';
       });
       html += '</select>';
 
