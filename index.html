@@ -1585,6 +1585,7 @@ function setEventType(type){
     if(stLbl) stLbl.textContent = 'Parcours';
     var bpLbl = document.getElementById('lbl-birds-per');
     if(bpLbl) bpLbl.textContent = 'Birds per Peg';
+    buildStationBirdsList();
   } else if(type==='5STAND'){
     if(s5Btn){ s5Btn.className='btn btn-gold'; s5Btn.style.flex='1'; s5Btn.style.padding='12px'; s5Btn.style.fontSize='13px'; }
     if(stLbl) stLbl.textContent = 'Stands';
@@ -1600,6 +1601,7 @@ function setEventType(type){
     if(stLbl) stLbl.textContent = 'Stations';
     var bpLbl2 = document.getElementById('lbl-birds-per');
     if(bpLbl2) bpLbl2.textContent = 'Birds per Station';
+    buildStationBirdsList();
   }
 }
 
