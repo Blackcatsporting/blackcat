@@ -203,6 +203,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
       <div id="fitasc-setup-list"></div>
       <button class="btn btn-grey btn-full mt8" onclick="buildFitascSetup()">🔄 Reset FITASC Setup</button>
     </div>
+  </div>
   <div class="card">
     <div class="ctitle">📋 Import Shooters</div>
     <div class="info">Paste names from anywhere — registration software, email, notes, spreadsheet, or squad sheet format.</div>
@@ -3277,6 +3278,37 @@ function drawScore(){
 
 function esc(s){return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function pickShooter(name){S.active=name;drawScore();}
+
+function drawStationsFromLog(shooter, log){
+  // Draw station breakdown from log entries
+  var grid = document.getElementById('sc-stations');
+  if(!grid) return;
+  grid.innerHTML = '';
+  var shooterLog = log.filter(function(r){ return r.shooter === shooter; });
+  if(!shooterLog.length) return;
+  var numSt = S.started ? S.stations : (shooterLog.length ? Math.max.apply(null, shooterLog.map(function(r){ return r.station; }))+1 : 10);
+  for(var i=0; i<numSt; i++){
+    var r = shooterLog.find(function(r){ return r.station === i; });
+    var div = document.createElement('div');
+    div.className = 'station';
+    var birdsHtml = '';
+    if(r && r.birds && r.birds.length){
+      birdsHtml = r.birds.map(function(b){
+        if(b===true) return '<span style="color:var(--hit);font-weight:700">X</span>';
+        if(b===false) return '<span style="color:var(--miss);font-weight:700">O</span>';
+        return '<span style="color:var(--bdr)">-</span>';
+      }).join(' ');
+    } else if(r) {
+      birdsHtml = '<span style="color:var(--hit)">'+r.dead+' Dead</span> / <span style="color:var(--miss)">'+r.lost+' Lost</span>';
+    } else {
+      birdsHtml = '<span style="color:var(--bdr)">not submitted</span>';
+    }
+    div.innerHTML = '<div class="station-hdr"><div class="station-name">'+stationLabel()+' '+(i+1)+'</div>'
+      +(r?'<div style="font-family:DM Mono,monospace;font-size:12px"><span style="color:var(--hit)">'+(r.dead)+' Dead</span> / <span style="color:var(--miss)">'+(r.lost)+' Lost</span></div>':'')+'</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:13px;letter-spacing:2px;padding:8px 4px">'+birdsHtml+'</div>';
+    grid.appendChild(div);
+  }
+}
 
 function drawStations(){
   var grid=document.getElementById('sc-stations'); grid.innerHTML='';
