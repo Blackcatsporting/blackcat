@@ -902,6 +902,11 @@ function connectAsTrapper(){
         S.stationBirds = state.stationBirds;
         S.shooters     = state.shooters;
         S.eventType    = state.eventType || 'SC';
+        // Load FITASC setup on trapper device
+        if(state.fitascSetup && state.fitascSetup.length){
+          fitascSetup = state.fitascSetup;
+          FITASC_PARCOURS = state.fitascParcours || state.fitascSetup.length;
+        }
       } else {
         toast('Waiting for admin to start event...', '');
       }
@@ -1743,7 +1748,7 @@ function startRound(){
   var key = S.name.replace(/[^A-Z0-9]/g,'_').substring(0,40);
   localStorage.setItem('ct_event_key', key);
 
-  fbPushEventState({ started:S.started, name:S.name, stations:S.stations, birds:S.birds, stationBirds:S.stationBirds, shooters:S.shooters, eventType:S.eventType });
+  fbPushEventState({ started:S.started, name:S.name, stations:S.stations, birds:S.birds, stationBirds:S.stationBirds, shooters:S.shooters, eventType:S.eventType, fitascSetup:fitascSetup, fitascParcours:FITASC_PARCOURS });
   fbPushSquads(S.squads);
 
   var codeDisp = document.getElementById('event-code-display');
