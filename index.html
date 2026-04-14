@@ -178,32 +178,31 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
         <button id="ev-type-5stand" onclick="setEventType('5STAND')" class="btn btn-grey" style="flex:1;padding:12px;font-size:13px">🎯 5-Stand</button>
       </div>
     </div>
-    <div class="mt12"><label class="lbl" id="lbl-stations">Stations</label>
-    <input id="ev-st" class="inp" type="number" value="10" min="1" max="50" onchange="buildStationBirdsList(S.eventType)" oninput="buildStationBirdsList(S.eventType)" style="max-width:120px">
-    <span style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);margin-left:8px;letter-spacing:1px">Max 50</span></div>
-    <div class="mt12">
-      <label class="lbl" id="lbl-birds-per">Birds per Station</label>
-      <div class="info" style="margin-bottom:8px">Set the default then adjust individual stations below.</div>
-      <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
-        <input id="ev-birds" class="inp" type="number" value="10" min="1" max="25" style="max-width:100px">
-        <button class="btn btn-grey" onclick="applyDefaultBirds()" style="white-space:nowrap">Apply to All</button>
+    <div id="stations-section" class="mt12">
+      <div class="mt12"><label class="lbl" id="lbl-stations">Stations</label>
+      <input id="ev-st" class="inp" type="number" value="10" min="1" max="50" onchange="buildStationBirdsList(S.eventType)" oninput="buildStationBirdsList(S.eventType)" style="max-width:120px">
+      <span style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);margin-left:8px;letter-spacing:1px">Max 50</span></div>
+      <div class="mt12">
+        <label class="lbl" id="lbl-birds-per">Birds per Station</label>
+        <div class="info" style="margin-bottom:8px">Set the default then adjust individual stations below.</div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+          <input id="ev-birds" class="inp" type="number" value="10" min="1" max="25" style="max-width:100px">
+          <button class="btn btn-grey" onclick="applyDefaultBirds()" style="white-space:nowrap">Apply to All</button>
+        </div>
+        <div id="station-birds-list"></div>
       </div>
-      <div id="station-birds-list"></div>
     </div>
-  </div>
-
-  <!-- FITASC SETUP -->
-  <div class="card" id="fitasc-setup-card" style="display:none">
-    <div class="ctitle" style="color:var(--org)">🎯 FITASC Setup</div>
-    <div class="info">Choose 50 or 100 bird format. Set pegs and birds per peg for each Parcours.</div>
-    <label class="lbl">Format</label>
-    <div style="display:flex;gap:10px;margin-bottom:12px">
-      <button id="fitasc-50" onclick="setFitascFormat(50)" class="btn btn-grey" style="flex:1;padding:12px;font-size:14px">50 Birds<br><small style="font-size:11px;opacity:0.7">2 Parcours</small></button>
-      <button id="fitasc-100" onclick="setFitascFormat(100)" class="btn btn-org" style="flex:1;padding:12px;font-size:14px">100 Birds<br><small style="font-size:11px;opacity:0.7">4 Parcours</small></button>
+    <!-- FITASC SETUP — shown when FITASC selected -->
+    <div id="fitasc-setup-card" style="display:none;margin-top:12px;padding:12px;background:var(--surf2);border:1px solid var(--org);border-radius:8px">
+      <div style="font-family:Bebas Neue,sans-serif;font-size:16px;color:var(--org);letter-spacing:1px;margin-bottom:8px">🎯 FITASC Setup</div>
+      <label class="lbl">Format</label>
+      <div style="display:flex;gap:10px;margin-bottom:12px">
+        <button id="fitasc-50" onclick="setFitascFormat(50)" class="btn btn-grey" style="flex:1;padding:12px;font-size:14px">50 Birds<br><small style="font-size:11px;opacity:0.7">2 Parcours</small></button>
+        <button id="fitasc-100" onclick="setFitascFormat(100)" class="btn btn-org" style="flex:1;padding:12px;font-size:14px">100 Birds<br><small style="font-size:11px;opacity:0.7">4 Parcours</small></button>
+      </div>
+      <div id="fitasc-setup-list"></div>
+      <button class="btn btn-grey btn-full mt8" onclick="buildFitascSetup()">🔄 Reset FITASC Setup</button>
     </div>
-    <div id="fitasc-setup-list"></div>
-    <button class="btn btn-grey btn-full mt8" onclick="buildFitascSetup()">🔄 Reset FITASC Setup</button>
-  </div>
   <div class="card">
     <div class="ctitle">📋 Import Shooters</div>
     <div class="info">Paste names from anywhere — registration software, email, notes, spreadsheet, or squad sheet format.</div>
@@ -1587,11 +1586,14 @@ function setEventType(type){
     if(stLbl) stLbl.textContent = 'Parcours';
     var bpLbl = document.getElementById('lbl-birds-per');
     if(bpLbl) bpLbl.textContent = 'Birds per Peg';
+    var stSection = document.getElementById('stations-section');
+    if(stSection) stSection.style.display = 'none';
     buildStationBirdsList('FITASC');
   } else if(type==='5STAND'){
     if(s5Btn){ s5Btn.className='btn btn-gold'; s5Btn.style.flex='1'; s5Btn.style.padding='12px'; s5Btn.style.fontSize='13px'; }
     if(stLbl) stLbl.textContent = 'Stands';
-
+    var stSection4 = document.getElementById('stations-section');
+    if(stSection4) stSection4.style.display = 'block';
     var stInp = document.getElementById('ev-st');
     var bInp  = document.getElementById('ev-birds');
     if(stInp){ stInp.value='5'; }
@@ -1603,6 +1605,8 @@ function setEventType(type){
     if(stLbl) stLbl.textContent = 'Stations';
     var bpLbl2 = document.getElementById('lbl-birds-per');
     if(bpLbl2) bpLbl2.textContent = 'Birds per Station';
+    var stSection5 = document.getElementById('stations-section');
+    if(stSection5) stSection5.style.display = 'block';
     buildStationBirdsList('SC');
   }
 }
@@ -2605,8 +2609,249 @@ function fs5StartRound2(){
 }
 // ═══════════════════════════════
 
+// ═══════════════════════════════════════════════
+// FITASC ENGINE
+// ═══════════════════════════════════════════════
+var fitascE = {
+  squadIdx: -1,
+  parcours: 0,      // 0-based current parcours
+  peg: 0,           // 0-based current peg
+  shooterIdx: 0,    // current shooter position in rotation
+  scored: 0,        // how many shooters scored this peg
+  firstShooter: 0,  // who started singles on peg 0 of this parcours
+  scores: {}        // scores[parcours][peg][shooterName] = dead
+};
+
+function fitascEInit(squadIdx){
+  fitascE.squadIdx = squadIdx;
+  fitascE.parcours = 0;
+  fitascE.peg = 0;
+  fitascE.shooterIdx = 0;
+  fitascE.scored = 0;
+  fitascE.firstShooter = 0;
+  // Init scores structure
+  fitascE.scores = {};
+  var totalParcours = fitascSetup.length || FITASC_PARCOURS;
+  for(var p=0; p<totalParcours; p++){
+    fitascE.scores[p] = {};
+    var pegs = fitascSetup[p] ? fitascSetup[p].pegs.length : 4;
+    for(var g=0; g<pegs; g++) fitascE.scores[p][g] = {};
+  }
+  trapSquadIdx = -1;
+  trapScoredCount = 0;
+  fitascEPickFirst();
+}
+
+function fitascEPickFirst(){
+  var squad = S.squads[fitascE.squadIdx];
+  var el = document.getElementById('tr-squad-list');
+  var html = '<div style="text-align:center;padding:16px 0 20px">'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:22px;color:var(--org);letter-spacing:2px;margin-bottom:4px">PARCOURS '+(fitascE.parcours+1)+' — PEG '+(fitascE.peg+1)+'</div>'
+    +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">WHO SHOOTS FIRST?</div>';
+  squad.members.forEach(function(name, i){
+    html += '<button onclick="fitascESetFirst('+i+')" style="display:block;width:100%;text-align:left;background:var(--surf);border:3px solid var(--org);border-radius:10px;padding:18px;margin-bottom:10px;font-size:20px;font-weight:700;color:var(--txt);cursor:pointer;font-family:DM Sans,sans-serif;-webkit-tap-highlight-color:transparent">'+name+'</button>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+  document.getElementById('tr-empty').style.display='none';
+  document.getElementById('tr-screen-squads').style.display='block';
+  document.getElementById('tr-screen-scoring').style.display='none';
+  // Touch handlers for iOS
+  setTimeout(function(){
+    var btns = el.querySelectorAll('button');
+    btns.forEach(function(btn, i){
+      btn.addEventListener('touchend', function(e){ e.preventDefault(); fitascESetFirst(i); });
+    });
+  }, 100);
+}
+
+function fitascESetFirst(idx){
+  fitascE.shooterIdx = idx;
+  fitascE.scored = 0;
+  // Track first shooter for rotation
+  if(fitascE.peg === 0) fitascE.firstShooter = idx;
+  fitascEScoreNext();
+}
+
+function fitascEScoreNext(){
+  var squad = S.squads[fitascE.squadIdx];
+  var members = squad.members;
+  var name = members[fitascE.shooterIdx % members.length];
+  var pegSetup = fitascSetup[fitascE.parcours] && fitascSetup[fitascE.parcours].pegs[fitascE.peg];
+  var birds = pegSetup ? pegSetup.birds : 5;
+
+  trapShooter = name;
+  trapStation = fitascE.peg;
+  trapBirds = new Array(birds).fill(null);
+
+  document.getElementById('tr-squad-label').textContent = 'PARCOURS '+(fitascE.parcours+1)+' — PEG '+(fitascE.peg+1)+' — '+(fitascE.scored+1)+'/'+members.length;
+  document.getElementById('tr-progress').textContent = name;
+  document.getElementById('tr-name').textContent = name;
+
+  trShow('scoring');
+  buildTrapperBirds();
+
+  // Change Dead/Lost button labels to ONE/ZERO
+  var deadBtn = document.getElementById('tr-dead-btn');
+  var lostBtn = document.getElementById('tr-lost-btn');
+  var deadLbl = document.getElementById('tr-dead-lbl');
+  var lostLbl = document.getElementById('tr-lost-lbl');
+  if(deadBtn) deadBtn.textContent = 'ONE';
+  if(lostBtn) lostBtn.textContent = 'ZERO';
+  if(deadLbl) deadLbl.textContent = 'One';
+  if(lostLbl) lostLbl.textContent = 'Zero';
+
+  document.getElementById('tr-submit-btn').onclick = function(){ trapSubmitConfirm(); };
+  document.getElementById('tr-submit-btn').dataset.mode = 'fitasc';
+}
+
+function fitascESubmit(){
+  var dead=0, lost=0;
+  trapBirds.forEach(function(b){ if(b===true)dead++; if(b===false)lost++; });
+  var squad = S.squads[fitascE.squadIdx];
+  var members = squad.members;
+  var name = members[fitascE.shooterIdx % members.length];
+
+  // Store score
+  fitascE.scores[fitascE.parcours][fitascE.peg][name] = dead;
+
+  // Push to log
+  adminLog.unshift({
+    id: Date.now(),
+    time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
+    shooter: name,
+    station: fitascE.peg,
+    dead: dead, lost: lost,
+    total: trapBirds.length,
+    birds: trapBirds.slice(),
+    round: S.name,
+    trapper: trapperName||'Unknown',
+    eventType: 'FITASC',
+    fitascParcours: fitascE.parcours
+  });
+  localStorage.setItem('ct_admin', JSON.stringify(adminLog));
+  fbPushAdminLog(adminLog);
+  toast(name+' — '+dead+' ONE', 'green');
+
+  fitascE.scored++;
+  fitascE.shooterIdx++;
+
+  if(fitascE.scored >= members.length){
+    fitascEShowSummary();
+  } else {
+    fitascEScoreNext();
+  }
+}
+
+function fitascEShowSummary(){
+  var squad = S.squads[fitascE.squadIdx];
+  var members = squad.members;
+  var pegSetup = fitascSetup[fitascE.parcours] && fitascSetup[fitascE.parcours].pegs[fitascE.peg];
+  var birdsPerPeg = pegSetup ? pegSetup.birds : 5;
+  var el = document.getElementById('tr-squad-list');
+
+  // Running totals for this parcours
+  var running = {};
+  members.forEach(function(m){ running[m]=0; });
+  var totalPegs = fitascSetup[fitascE.parcours] ? fitascSetup[fitascE.parcours].pegs.length : 4;
+  for(var g=0; g<=fitascE.peg; g++){
+    members.forEach(function(m){
+      running[m] += (fitascE.scores[fitascE.parcours][g][m]||0);
+    });
+  }
+
+  var birdsShot = 0;
+  for(var g2=0; g2<=fitascE.peg; g2++){
+    var ps = fitascSetup[fitascE.parcours] && fitascSetup[fitascE.parcours].pegs[g2];
+    birdsShot += ps ? ps.birds : 5;
+  }
+
+  var allPegsDone = fitascE.peg >= totalPegs-1;
+  var totalParcours = fitascSetup.length || FITASC_PARCOURS;
+  var allParcoursDone = allPegsDone && fitascE.parcours >= totalParcours-1;
+
+  var html = '<div style="text-align:center;padding:20px">'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:24px;color:var(--hit);letter-spacing:2px;margin-bottom:4px">&#10003; PEG '+(fitascE.peg+1)+' COMPLETE</div>'
+    +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:16px">PARCOURS '+(fitascE.parcours+1)+' — '+(fitascE.peg+1)+' OF '+totalPegs+' PEGS</div>'
+    +'<div style="background:var(--surf2);border-radius:10px;padding:12px;margin-bottom:20px">'
+    +'<div style="display:grid;grid-template-columns:2fr 1fr 1fr;padding:4px 0 8px;border-bottom:1px solid var(--bdr);font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px">'
+    +'<div>SHOOTER</div><div style="text-align:center">THIS PEG</div><div style="text-align:right">RUNNING</div></div>';
+
+  members.forEach(function(m){
+    var pegScore = fitascE.scores[fitascE.parcours][fitascE.peg][m]||0;
+    var runScore = running[m]||0;
+    html += '<div style="display:grid;grid-template-columns:2fr 1fr 1fr;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:14px">'
+      +'<div style="color:var(--txt)">'+m.split(' ')[0]+'</div>'
+      +'<div style="color:var(--dim);text-align:center">'+pegScore+'/'+birdsPerPeg+'</div>'
+      +'<div style="color:var(--org);font-weight:700;text-align:right">'+runScore+'/'+birdsShot+'</div>'
+      +'</div>';
+  });
+  html += '</div>';
+
+  if(!allPegsDone){
+    html += '<button onclick="fitascENextPeg()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; MOVE TO PEG '+(fitascE.peg+2)+'</button>';
+  } else if(!allParcoursDone){
+    // Parcours complete
+    var maxBirds = birdsShot;
+    html += '<div style="font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--hit);letter-spacing:2px;margin:12px 0 8px">PARCOURS '+(fitascE.parcours+1)+' TOTAL</div>'
+      +'<div style="background:var(--surf2);border-radius:10px;padding:12px;margin-bottom:16px">';
+    members.forEach(function(m){
+      html += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:14px">'
+        +'<span style="color:var(--txt)">'+m.split(' ')[0]+'</span>'
+        +'<span style="color:var(--org);font-weight:700">'+(running[m]||0)+'/'+maxBirds+'</span></div>';
+    });
+    html += '</div>'
+      +'<button onclick="fitascENextParcours()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; START PARCOURS '+(fitascE.parcours+2)+'</button>';
+  } else {
+    // All done — grand totals
+    var totalBirdsAll = 0;
+    fitascSetup.forEach(function(p){ p.pegs.forEach(function(pg){ totalBirdsAll+=pg.birds; }); });
+    var grandTotals = {};
+    members.forEach(function(m){ grandTotals[m]=0; });
+    Object.keys(fitascE.scores).forEach(function(pIdx){
+      Object.keys(fitascE.scores[pIdx]).forEach(function(gIdx){
+        members.forEach(function(m){ grandTotals[m]+=(fitascE.scores[pIdx][gIdx][m]||0); });
+      });
+    });
+    html += '<div style="font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--hit);letter-spacing:2px;margin:12px 0 8px">GRAND TOTAL — '+totalBirdsAll+' BIRDS</div>'
+      +'<div style="background:var(--surf2);border-radius:10px;padding:12px;margin-bottom:16px">';
+    members.forEach(function(m){
+      html += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:14px">'
+        +'<span style="color:var(--txt)">'+m.split(' ')[0]+'</span>'
+        +'<span style="color:var(--org);font-weight:700">'+(grandTotals[m]||0)+'/'+totalBirdsAll+'</span></div>';
+    });
+    html += '</div>'
+      +'<button onclick="switchToTrapper()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer">&#8617; SIGN OUT</button>';
+  }
+
+  html += '</div>';
+  el.innerHTML = html;
+  document.getElementById('tr-empty').style.display='none';
+  document.getElementById('tr-screen-squads').style.display='block';
+  document.getElementById('tr-screen-scoring').style.display='none';
+}
+
+function fitascENextPeg(){
+  fitascE.peg++;
+  // Rotation: next peg's first shooter advances by 1
+  fitascE.shooterIdx = (fitascE.firstShooter + fitascE.peg) % S.squads[fitascE.squadIdx].members.length;
+  fitascE.scored = 0;
+  fitascEPickFirst();
+}
+
+function fitascENextParcours(){
+  fitascE.parcours++;
+  fitascE.peg = 0;
+  fitascE.shooterIdx = 0;
+  fitascE.firstShooter = 0;
+  fitascE.scored = 0;
+  fitascEPickFirst();
+}
+// ═══════════════════════════════════════════════
+
 function startScoringSquad(squadIdx, keepStation) {
   if(S.eventType==='5STAND'){ fs5Init(squadIdx); return; }
+  if(S.eventType==='FITASC'){ fitascEInit(squadIdx); return; }
   trapSquadIdx = squadIdx;
   var squads   = S.squads.length ? S.squads : [{num:1, label:'1', members:S.shooters}];
   var squad    = squads[squadIdx];
@@ -2930,6 +3175,7 @@ function trapSubmitConfirm(){
     btn.style.background = 'var(--org)';
     // Call the right submit function
     if(btn.dataset.mode === '5stand') fs5Submit();
+    else if(btn.dataset.mode === 'fitasc') fitascESubmit();
     else trapSubmit();
     return;
   }
