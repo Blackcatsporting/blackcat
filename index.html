@@ -1175,11 +1175,9 @@ function parseSquads(raw) {
         squads.push({label:String(currentLabel), session:sessionLabel, num:parseInt(currentLabel)||autoNum, members:currentMembers.slice()});
         currentMembers = []; currentLabel = null; autoNum++;
       }
-      if(line.indexOf('/') > -1){
-        sessionLabel = line.split('/')[0].replace(/\s*[\u2014\-]+\s*FIELD.*$/i,'').trim();
-      } else {
-        sessionLabel = line.replace(/\s*[\u2014\-]+\s*/g,' - ').trim();
-      }
+      // Keep full line as session label for FITASC (has all 4 parcours times)
+      sessionLabel = line.trim();
+      currentLabel = line.trim();
       return;
     }
 
@@ -1195,10 +1193,9 @@ function parseSquads(raw) {
       return;
     }
 
-    var squadLine = line.match(/^(\d+[AB]?)\s*([A-Z].*)/);
+    var squadLine = line.match(/^(\d+[AB]?)\s+([A-Z].*)/);
     if(squadLine && /[A-Z][a-z]/.test(squadLine[2])){
       if(S.eventType==='5STAND'){
-        // Don't reset label — just add name to current squad
         currentMembers.push(squadLine[2].trim());
         return;
       }
@@ -1206,14 +1203,25 @@ function parseSquads(raw) {
         squads.push({label:String(currentLabel), session:sessionLabel, num:parseInt(currentLabel)||autoNum, members:currentMembers.slice()});
         currentMembers = []; autoNum++;
       }
-      currentLabel = squadLine[1];
-      currentMembers.push(squadLine[2].trim());
+      // Keep time-based label if already set, otherwise use squad number
+      if(!currentLabel || !/\d+:\d+/.test(String(currentLabel))){
+        currentLabel = squadLine[1];
+      }
+      // Split names by 2+ spaces
+      var names = squadLine[2].trim().split(/\s{2,}/);
+      names.forEach(function(n){ if(n.trim()) currentMembers.push(n.trim()); });
       return;
     }
 
     if(line.length > 1){
       if(currentLabel === null) currentLabel = autoNum;
-      currentMembers.push(line.replace(/,/g,'').trim());
+      // Also split by 2+ spaces in case names are on same line without squad number
+      var parts = line.replace(/,/g,'').trim().split(/\s{2,}/);
+      if(parts.length > 1){
+        parts.forEach(function(p){ if(p.trim()) currentMembers.push(p.trim()); });
+      } else {
+        currentMembers.push(line.replace(/,/g,'').trim());
+      }
     }
   });
 
