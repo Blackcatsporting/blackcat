@@ -4153,7 +4153,7 @@ function drawAssign(){
       html += '<select id="assign-sq-'+tKey+'" class="inp" style="margin-bottom:10px">';
       html += '<option value="">— Select Squad —</option>';
       squads.forEach(function(sq){
-        var sel = trapper.assignedSquad == (sq.label||sq.num) ? ' selected' : '';
+        var sel = trapper.assignedSquad !== null && String(trapper.assignedSquad).trim() === String(sq.label||sq.num).trim() ? ' selected' : '';
         html += '<option value="'+(sq.label||sq.num)+'"'+sel+'>Squad '+(sq.label||sq.num)+(sq.session?' ('+sq.session+')':'')+' — '+sq.members.join(', ')+'</option>';
       });
       html += '</select>';
