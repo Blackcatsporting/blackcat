@@ -1710,17 +1710,15 @@ function newEvent(){
 }
 
 function startRound(){
+  try {
   var n=document.getElementById('ev-name').value.trim();
   if(!n){toast('Enter event name');return;}
-  // Apply manual squads first so their members count as shooters
   applyManualSquads();
 
   if(!S.shooters.length && !S.squads.length){toast('Add shooters or build squads first');return;}
 
   var savedSquads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
-  if(savedSquads.length > 0 && S.squads.length === 0){
-    S.squads = savedSquads;
-  }
+  if(savedSquads.length > 0 && S.squads.length === 0){ S.squads = savedSquads; }
 
   S.name=n.toUpperCase();
   S.club = (document.getElementById('ev-club').value.trim()||'').toUpperCase();
@@ -1739,38 +1737,27 @@ function startRound(){
     for(var i=0;i<S.stations;i++) S.scores[s][i]=new Array(S.stationBirds[i]).fill(null);
   });
 
-  if(!S.squads || S.squads.length===0){
-    S.squads=[{num:1, label:'1', members:S.shooters.slice()}];
-  }
+  if(!S.squads || S.squads.length===0){ S.squads=[{num:1, label:'1', members:S.shooters.slice()}]; }
 
   localStorage.setItem('ct_squads', JSON.stringify(S.squads));
-
-  // Save event key FIRST before any Firebase pushes
   var key = S.name.replace(/[^A-Z0-9]/g,'_').substring(0,40);
   localStorage.setItem('ct_event_key', key);
 
-  fbPushEventState({
-    started:       S.started,
-    name:          S.name,
-    stations:      S.stations,
-    birds:         S.birds,
-    stationBirds:  S.stationBirds,
-    shooters:      S.shooters,
-    eventType:     S.eventType
-  });
+  fbPushEventState({ started:S.started, name:S.name, stations:S.stations, birds:S.birds, stationBirds:S.stationBirds, shooters:S.shooters, eventType:S.eventType });
   fbPushSquads(S.squads);
-  // Show event code
+
   var codeDisp = document.getElementById('event-code-display');
   var codeVal = document.getElementById('event-code-value');
   if(codeDisp) codeDisp.style.display='block';
   if(codeVal) codeVal.textContent = key;
   setTimeout(function(){ generateShooterQR(key); }, 500);
   toast('Round started!','green');
-  // Restart all Firebase listeners with correct event key
   restartFirebaseListeners();
-  // Unlock PIN change now that event is active
   unlockPinChange();
   go('squads');
+  } catch(e) {
+    alert('startRound ERROR: ' + e.message + '\n' + e.stack);
+  }
 }
 
 function addLateEntry(){
