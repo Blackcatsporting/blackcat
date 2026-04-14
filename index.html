@@ -1696,6 +1696,9 @@ function newEvent(){
   S.started=false; S.name=''; S.stations=10; S.birds=10;
   S.stationBirds=[]; S.shooters=[]; S.squads=[]; S.scores={}; S.active=''; S.eventType='SC';
   fiveStandRound = 1;
+  fitascSetup = []; FITASC_PARCOURS = 4;
+  localStorage.removeItem('ct_fitasc_setup');
+  localStorage.removeItem('ct_event_type');
   manualSquads = [];
   renderManualSquads();
   var stInp=document.getElementById('ev-st'); var bInp=document.getElementById('ev-birds');
@@ -1753,6 +1756,9 @@ function startRound(){
 
   fbPushEventState({ started:S.started, name:S.name, stations:S.stations, birds:S.birds, stationBirds:S.stationBirds, shooters:S.shooters, eventType:S.eventType, fitascSetup:fitascSetup, fitascParcours:FITASC_PARCOURS });
   fbPushSquads(S.squads);
+  // Persist FITASC setup locally so it survives page refresh
+  localStorage.setItem('ct_event_type', S.eventType);
+  if(S.eventType==='FITASC') localStorage.setItem('ct_fitasc_setup', JSON.stringify({setup:fitascSetup, parcours:FITASC_PARCOURS}));
 
   var codeDisp = document.getElementById('event-code-display');
   var codeVal = document.getElementById('event-code-value');
@@ -4760,6 +4766,13 @@ var fitascParcours  = 0;
 var fitascScores    = {};
 var FITASC_BIRDS    = 25;
 var FITASC_PARCOURS = 4;
+// Restore fitascSetup from localStorage if admin refreshed page mid-event
+(function(){
+  var savedType = localStorage.getItem('ct_event_type');
+  if(savedType) S.eventType = savedType;
+  var savedFitasc = localStorage.getItem('ct_fitasc_setup');
+  if(savedFitasc){ try{ var f=JSON.parse(savedFitasc); if(f.setup&&f.setup.length){ fitascSetup=f.setup; FITASC_PARCOURS=f.parcours||4; } }catch(e){} }
+})();
 
 function setFitascFormat(birds){
   FITASC_PARCOURS = birds === 50 ? 2 : 4;
