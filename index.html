@@ -2608,16 +2608,17 @@ function fs5StartRound2(){
 // ═══════════════════════════════
 
 // ═══════════════════════════════════════════════
-// FITASC ENGINE
+// FITASC ENGINE — singles/pairs two-phase
 // ═══════════════════════════════════════════════
 var fitascE = {
   squadIdx: -1,
-  parcours: 0,      // 0-based current parcours
-  peg: 0,           // 0-based current peg
-  shooterIdx: 0,    // current shooter position in rotation
-  scored: 0,        // how many shooters scored this peg
-  firstShooter: 0,  // who started singles on peg 0 of this parcours
-  scores: {}        // scores[parcours][peg][shooterName] = dead
+  parcours: 0,
+  peg: 0,
+  phase: 'singles',   // 'singles' or 'pairs'
+  shooterIdx: 0,
+  scored: 0,
+  firstShooter: 0,
+  scores: {}  // scores[parcours][peg][shooterName] = {singles:N, pairs:N}
 };
 
 function fitascEInit(squadIdx){
@@ -4619,10 +4620,15 @@ function updateFitascParcoursButtons(){
 }
 
 function buildFitascSetup(){
-
   fitascSetup = [];
   for(var p=0;p<FITASC_PARCOURS;p++){
-    fitascSetup.push({ pegs:[{birds:6},{birds:5},{birds:5},{birds:5},{birds:4}] });
+    fitascSetup.push({ pegs:[
+      {singles:5, pairs:2},
+      {singles:4, pairs:2},
+      {singles:4, pairs:2},
+      {singles:5, pairs:2},
+      {singles:5, pairs:2}
+    ]});
   }
   renderFitascSetup();
 }
@@ -4643,7 +4649,7 @@ function renderFitascSetup(){
     title.style.cssText = 'font-family:Bebas Neue,sans-serif;font-size:18px;color:var(--org);letter-spacing:1px';
     title.textContent = 'PARCOURS ' + (pi+1);
 
-    var total = parc.pegs.reduce(function(a,b){return a+b.birds;},0);
+    var total = parc.pegs.reduce(function(a,b){return a+(b.singles||0)+(b.pairs||0)*2;},0);
     var totalEl = document.createElement('div');
     totalEl.style.cssText = 'font-family:DM Mono,monospace;font-size:11px;color:'+(total===25?'var(--hit)':'var(--miss)')+';letter-spacing:1px';
     totalEl.textContent = total + ' / 25 birds';
@@ -4654,21 +4660,45 @@ function renderFitascSetup(){
 
     parc.pegs.forEach(function(peg, pegi){
       var pegRow = document.createElement('div');
-      pegRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr)';
+      pegRow.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bdr)';
 
       var pegLbl = document.createElement('div');
-      pegLbl.style.cssText = 'font-family:DM Mono,monospace;font-size:13px;color:var(--txt)';
+      pegLbl.style.cssText = 'font-family:DM Mono,monospace;font-size:13px;color:var(--txt);width:50px';
       pegLbl.textContent = 'Peg ' + (pegi+1);
 
-      var inp = document.createElement('input');
-      inp.type='number'; inp.min='1'; inp.max='25'; inp.value=peg.birds;
-      inp.style.cssText='width:65px;background:var(--surf);border:1px solid var(--bdr);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:14px;text-align:center';
-      inp.oninput = (function(parcIdx, pegIdx, totalId){ return function(){
-        fitascSetup[parcIdx].pegs[pegIdx].birds = parseInt(this.value)||0;
-        var t = fitascSetup[parcIdx].pegs.reduce(function(a,b){return a+b.birds;},0);
+      // Singles input
+      var sLbl = document.createElement('div');
+      sLbl.style.cssText = 'font-family:DM Mono,monospace;font-size:10px;color:var(--dim)';
+      sLbl.textContent = 'Singles';
+      var sInp = document.createElement('input');
+      sInp.type='number'; sInp.min='0'; sInp.max='25'; sInp.value=peg.singles||5;
+      sInp.style.cssText='width:50px;background:var(--surf);border:1px solid var(--bdr);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:14px;text-align:center';
+      sInp.oninput = (function(parcIdx, pegIdx, totalId){ return function(){
+        fitascSetup[parcIdx].pegs[pegIdx].singles = parseInt(this.value)||0;
+        var t = fitascSetup[parcIdx].pegs.reduce(function(a,b){return a+(b.singles||0)+(b.pairs||0)*2;},0);
         var tel = document.getElementById(totalId);
         if(tel){ tel.textContent=t+' / 25 birds'; tel.style.color=t===25?'var(--hit)':'var(--miss)'; }
       }; })(pi, pegi, 'fitasc-total-p'+pi);
+
+      // Pairs input
+      var pLbl = document.createElement('div');
+      pLbl.style.cssText = 'font-family:DM Mono,monospace;font-size:10px;color:var(--dim)';
+      pLbl.textContent = 'Pairs';
+      var pInp = document.createElement('input');
+      pInp.type='number'; pInp.min='0'; pInp.max='10'; pInp.value=peg.pairs||2;
+      pInp.style.cssText='width:50px;background:var(--surf);border:1px solid var(--bdr);border-radius:6px;padding:6px 8px;color:var(--txt);font-size:14px;text-align:center';
+      pInp.oninput = (function(parcIdx, pegIdx, totalId){ return function(){
+        fitascSetup[parcIdx].pegs[pegIdx].pairs = parseInt(this.value)||0;
+        var t = fitascSetup[parcIdx].pegs.reduce(function(a,b){return a+(b.singles||0)+(b.pairs||0)*2;},0);
+        var tel = document.getElementById(totalId);
+        if(tel){ tel.textContent=t+' / 25 birds'; tel.style.color=t===25?'var(--hit)':'var(--miss)'; }
+      }; })(pi, pegi, 'fitasc-total-p'+pi);
+
+      // Total per peg
+      var pegTotal = (peg.singles||5) + (peg.pairs||2)*2;
+      var tLbl = document.createElement('div');
+      tLbl.style.cssText = 'font-family:DM Mono,monospace;font-size:11px;color:var(--dim);margin-left:4px';
+      tLbl.textContent = '= '+pegTotal;
 
       var removeBtn = document.createElement('button');
       removeBtn.type='button';
@@ -4679,7 +4709,19 @@ function renderFitascSetup(){
         renderFitascSetup();
       }; })(pi, pegi);
 
-      pegRow.appendChild(pegLbl); pegRow.appendChild(inp); pegRow.appendChild(removeBtn);
+      var sGroup = document.createElement('div');
+      sGroup.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:2px';
+      sGroup.appendChild(sLbl); sGroup.appendChild(sInp);
+
+      var pGroup = document.createElement('div');
+      pGroup.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:2px';
+      pGroup.appendChild(pLbl); pGroup.appendChild(pInp);
+
+      pegRow.appendChild(pegLbl);
+      pegRow.appendChild(sGroup);
+      pegRow.appendChild(pGroup);
+      pegRow.appendChild(tLbl);
+      pegRow.appendChild(removeBtn);
       parcDiv.appendChild(pegRow);
     });
 
