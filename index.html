@@ -2610,185 +2610,191 @@ function fs5StartRound2(){
 // ═══════════════════════════════════════════════
 // FITASC ENGINE — singles/pairs two-phase
 // ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// FITASC ENGINE — singles/pairs two-phase
+// ═══════════════════════════════════════════════
 var fitascE = {
   squadIdx: -1,
   parcours: 0,
   peg: 0,
-  phase: 'singles',   // 'singles' or 'pairs'
+  phase: 'singles',
   shooterIdx: 0,
   scored: 0,
   firstShooter: 0,
-  scores: {}  // scores[parcours][peg][shooterName] = {singles:N, pairs:N}
+  scores: {}
 };
 
 function fitascEInit(squadIdx){
   fitascE.squadIdx = squadIdx;
-  fitascE.parcours = 0;
-  fitascE.peg = 0;
-  fitascE.shooterIdx = 0;
-  fitascE.scored = 0;
-  fitascE.firstShooter = 0;
-  // Init scores structure
+  fitascE.parcours = 0; fitascE.peg = 0;
+  fitascE.phase = 'singles';
+  fitascE.shooterIdx = 0; fitascE.scored = 0; fitascE.firstShooter = 0;
   fitascE.scores = {};
   var totalParcours = fitascSetup.length || FITASC_PARCOURS;
   for(var p=0; p<totalParcours; p++){
     fitascE.scores[p] = {};
-    var pegs = fitascSetup[p] ? fitascSetup[p].pegs.length : 4;
+    var pegs = fitascSetup[p] ? fitascSetup[p].pegs.length : 5;
     for(var g=0; g<pegs; g++) fitascE.scores[p][g] = {};
   }
-  trapSquadIdx = -1;
-  trapScoredCount = 0;
+  trapSquadIdx = -1; trapScoredCount = 0;
   fitascEPickFirst();
 }
 
 function fitascEPickFirst(){
   var squad = S.squads[fitascE.squadIdx];
   var el = document.getElementById('tr-squad-list');
+  var pegSetup = fitascSetup[fitascE.parcours] && fitascSetup[fitascE.parcours].pegs[fitascE.peg];
+  var singles = pegSetup ? (pegSetup.singles||5) : 5;
+  var pairs   = pegSetup ? (pegSetup.pairs||2)   : 2;
   var html = '<div style="text-align:center;padding:16px 0 20px">'
     +'<div style="font-family:Bebas Neue,sans-serif;font-size:22px;color:var(--org);letter-spacing:2px;margin-bottom:4px">PARCOURS '+(fitascE.parcours+1)+' — PEG '+(fitascE.peg+1)+'</div>'
-    +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">WHO SHOOTS FIRST?</div>';
+    +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:4px">'+singles+' SINGLES · '+pairs+' PAIRS ('+pairs*2+' BIRDS) · '+(singles+pairs*2)+' TOTAL</div>'
+    +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--org);letter-spacing:2px;margin-bottom:20px">WHO SHOOTS FIRST?</div>';
   squad.members.forEach(function(name, i){
     html += '<button onclick="fitascESetFirst('+i+')" style="display:block;width:100%;text-align:left;background:var(--surf);border:3px solid var(--org);border-radius:10px;padding:18px;margin-bottom:10px;font-size:20px;font-weight:700;color:var(--txt);cursor:pointer;font-family:DM Sans,sans-serif;-webkit-tap-highlight-color:transparent">'+name+'</button>';
   });
   html += '</div>';
   el.innerHTML = html;
-  // Hide sporting clays UI elements not needed for FITASC
-  var _sb = document.getElementById('tr-station-bar');
-  var _sf = document.getElementById('tr-session-bar');
-  var _an = document.getElementById('tr-arrival-note');
-  if(_sb) _sb.style.display='none';
-  if(_sf) _sf.style.display='none';
-  if(_an) _an.style.display='none';
+  var _sb=document.getElementById('tr-station-bar'), _sf=document.getElementById('tr-session-bar'), _an=document.getElementById('tr-arrival-note');
+  if(_sb)_sb.style.display='none'; if(_sf)_sf.style.display='none'; if(_an)_an.style.display='none';
   document.getElementById('tr-empty').style.display='none';
   document.getElementById('tr-screen-squads').style.display='block';
   document.getElementById('tr-screen-scoring').style.display='none';
   setTimeout(function(){
-    var btns = el.querySelectorAll('button');
-    btns.forEach(function(btn, i){
-      btn.addEventListener('touchend', function(e){ e.preventDefault(); fitascESetFirst(i); });
+    el.querySelectorAll('button').forEach(function(btn,i){
+      btn.addEventListener('touchend',function(e){e.preventDefault();fitascESetFirst(i);});
     });
-  }, 100);
+  },100);
 }
 
 function fitascESetFirst(idx){
-  fitascE.shooterIdx = idx;
-  fitascE.scored = 0;
-  // Track first shooter for rotation
-  if(fitascE.peg === 0) fitascE.firstShooter = idx;
+  fitascE.shooterIdx = idx; fitascE.firstShooter = idx;
+  fitascE.scored = 0; fitascE.phase = 'singles';
   fitascEScoreNext();
 }
 
 function fitascEScoreNext(){
   var squad = S.squads[fitascE.squadIdx];
   var members = squad.members;
-  var name = members[fitascE.shooterIdx % members.length];
   var pegSetup = fitascSetup[fitascE.parcours] && fitascSetup[fitascE.parcours].pegs[fitascE.peg];
-  var birds = pegSetup ? pegSetup.birds : 5;
+  var singles = pegSetup ? (pegSetup.singles||5) : 5;
+  var pairs   = pegSetup ? (pegSetup.pairs||2)   : 2;
+  var name = members[fitascE.shooterIdx % members.length];
+  var birds = fitascE.phase === 'singles' ? singles : pairs * 2;
 
-  trapShooter = name;
-  trapStation = fitascE.peg;
+  trapShooter = name; trapStation = fitascE.peg;
   trapBirds = new Array(birds).fill(null);
 
-  document.getElementById('tr-squad-label').textContent = 'PARCOURS '+(fitascE.parcours+1)+' — PEG '+(fitascE.peg+1)+' — '+(fitascE.scored+1)+'/'+members.length;
-  document.getElementById('tr-progress').textContent = name;
+  var phaseLabel = fitascE.phase === 'singles' ? 'SINGLES' : 'PAIRS';
+  document.getElementById('tr-squad-label').textContent = 'PAR '+(fitascE.parcours+1)+' — PEG '+(fitascE.peg+1)+' — '+phaseLabel;
+  document.getElementById('tr-progress').textContent = (fitascE.scored+1)+'/'+members.length+' — '+phaseLabel;
   document.getElementById('tr-name').textContent = name;
 
   trShow('scoring');
   buildTrapperBirds();
 
-  // Change Dead/Lost button labels to ONE/ZERO
-  var deadBtn = document.getElementById('tr-dead-btn');
-  var lostBtn = document.getElementById('tr-lost-btn');
-  var deadLbl = document.getElementById('tr-dead-lbl');
-  var lostLbl = document.getElementById('tr-lost-lbl');
-  if(deadBtn) deadBtn.textContent = 'ONE';
-  if(lostBtn) lostBtn.textContent = 'ZERO';
-  if(deadLbl) deadLbl.textContent = 'One';
-  if(lostLbl) lostLbl.textContent = 'Zero';
+  var deadBtn=document.getElementById('tr-dead-btn'), lostBtn=document.getElementById('tr-lost-btn');
+  var deadLbl=document.getElementById('tr-dead-lbl'), lostLbl=document.getElementById('tr-lost-lbl');
+  if(deadBtn) deadBtn.textContent='ONE'; if(lostBtn) lostBtn.textContent='ZERO';
+  if(deadLbl) deadLbl.textContent='One'; if(lostLbl) lostLbl.textContent='Zero';
 
   document.getElementById('tr-submit-btn').onclick = function(){ trapSubmitConfirm(); };
   document.getElementById('tr-submit-btn').dataset.mode = 'fitasc';
 }
 
 function fitascESubmit(){
-  var dead=0, lost=0;
-  trapBirds.forEach(function(b){ if(b===true)dead++; if(b===false)lost++; });
+  var dead=0;
+  trapBirds.forEach(function(b){ if(b===true) dead++; });
   var squad = S.squads[fitascE.squadIdx];
   var members = squad.members;
   var name = members[fitascE.shooterIdx % members.length];
+  var pegSetup = fitascSetup[fitascE.parcours] && fitascSetup[fitascE.parcours].pegs[fitascE.peg];
+  var singles = pegSetup ? (pegSetup.singles||5) : 5;
+  var pairs   = pegSetup ? (pegSetup.pairs||2)   : 2;
 
-  // Store score
-  fitascE.scores[fitascE.parcours][fitascE.peg][name] = dead;
+  if(!fitascE.scores[fitascE.parcours][fitascE.peg][name])
+    fitascE.scores[fitascE.parcours][fitascE.peg][name] = {singles:0, pairs:0};
+  if(fitascE.phase==='singles') fitascE.scores[fitascE.parcours][fitascE.peg][name].singles = dead;
+  else                          fitascE.scores[fitascE.parcours][fitascE.peg][name].pairs   = dead;
 
-  // Push to log
   adminLog.unshift({
-    id: Date.now(),
-    time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
-    shooter: name,
-    station: fitascE.peg,
-    dead: dead, lost: lost,
-    total: trapBirds.length,
-    birds: trapBirds.slice(),
-    round: S.name,
-    trapper: trapperName||'Unknown',
-    eventType: 'FITASC',
-    fitascParcours: fitascE.parcours
+    id:Date.now(), time:new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
+    shooter:name, station:fitascE.peg, dead:dead, lost:trapBirds.length-dead,
+    total:trapBirds.length, birds:trapBirds.slice(), round:S.name,
+    trapper:trapperName||'Unknown', eventType:'FITASC',
+    fitascParcours:fitascE.parcours, fitascPhase:fitascE.phase
   });
   localStorage.setItem('ct_admin', JSON.stringify(adminLog));
   fbPushAdminLog(adminLog);
-  toast(name+' — '+dead+' ONE', 'green');
+  toast(name+' — '+dead+' ('+fitascE.phase+')', 'green');
 
-  fitascE.scored++;
-  fitascE.shooterIdx++;
+  fitascE.scored++; fitascE.shooterIdx++;
 
   if(fitascE.scored >= members.length){
-    fitascEShowSummary();
+    if(fitascE.phase==='singles' && pairs > 0){
+      fitascE.phase = 'pairs';
+      fitascE.scored = 0;
+      fitascE.shooterIdx = (fitascE.firstShooter + 1) % members.length;
+      fitascEScoreNext();
+    } else {
+      fitascEShowSummary();
+    }
   } else {
     fitascEScoreNext();
   }
+}
+
+function fitascETotalForShooter(name){
+  var total = 0;
+  var totalParcours = fitascSetup.length || FITASC_PARCOURS;
+  for(var p=0; p<totalParcours; p++){
+    if(!fitascE.scores[p]) continue;
+    var pegs = fitascSetup[p] ? fitascSetup[p].pegs.length : 5;
+    for(var g=0; g<pegs; g++){
+      var sc = fitascE.scores[p][g] && fitascE.scores[p][g][name];
+      if(sc) total += (sc.singles||0)+(sc.pairs||0);
+    }
+  }
+  return total;
 }
 
 function fitascEShowSummary(){
   var squad = S.squads[fitascE.squadIdx];
   var members = squad.members;
   var pegSetup = fitascSetup[fitascE.parcours] && fitascSetup[fitascE.parcours].pegs[fitascE.peg];
-  var birdsPerPeg = pegSetup ? pegSetup.birds : 5;
+  var singles = pegSetup ? (pegSetup.singles||5) : 5;
+  var pairs   = pegSetup ? (pegSetup.pairs||2)   : 2;
   var el = document.getElementById('tr-squad-list');
+  var totalPegs = fitascSetup[fitascE.parcours] ? fitascSetup[fitascE.parcours].pegs.length : 5;
+  var totalParcours = fitascSetup.length || FITASC_PARCOURS;
+  var allPegsDone = fitascE.peg >= totalPegs-1;
+  var allParcoursDone = allPegsDone && fitascE.parcours >= totalParcours-1;
 
-  // Running totals for this parcours
-  var running = {};
+  // Running totals this parcours up to current peg
+  var running = {}; var birdsShot = 0;
   members.forEach(function(m){ running[m]=0; });
-  var totalPegs = fitascSetup[fitascE.parcours] ? fitascSetup[fitascE.parcours].pegs.length : 4;
   for(var g=0; g<=fitascE.peg; g++){
+    var ps = fitascSetup[fitascE.parcours] && fitascSetup[fitascE.parcours].pegs[g];
+    birdsShot += ps ? (ps.singles||5)+(ps.pairs||2)*2 : 9;
     members.forEach(function(m){
-      running[m] += (fitascE.scores[fitascE.parcours][g][m]||0);
+      var sc = fitascE.scores[fitascE.parcours][g][m];
+      running[m] += sc ? (sc.singles||0)+(sc.pairs||0) : 0;
     });
   }
-
-  var birdsShot = 0;
-  for(var g2=0; g2<=fitascE.peg; g2++){
-    var ps = fitascSetup[fitascE.parcours] && fitascSetup[fitascE.parcours].pegs[g2];
-    birdsShot += ps ? ps.birds : 5;
-  }
-
-  var allPegsDone = fitascE.peg >= totalPegs-1;
-  var totalParcours = fitascSetup.length || FITASC_PARCOURS;
-  var allParcoursDone = allPegsDone && fitascE.parcours >= totalParcours-1;
 
   var html = '<div style="text-align:center;padding:20px">'
     +'<div style="font-family:Bebas Neue,sans-serif;font-size:24px;color:var(--hit);letter-spacing:2px;margin-bottom:4px">&#10003; PEG '+(fitascE.peg+1)+' COMPLETE</div>'
     +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:16px">PARCOURS '+(fitascE.parcours+1)+' — '+(fitascE.peg+1)+' OF '+totalPegs+' PEGS</div>'
     +'<div style="background:var(--surf2);border-radius:10px;padding:12px;margin-bottom:20px">'
-    +'<div style="display:grid;grid-template-columns:2fr 1fr 1fr;padding:4px 0 8px;border-bottom:1px solid var(--bdr);font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px">'
-    +'<div>SHOOTER</div><div style="text-align:center">THIS PEG</div><div style="text-align:right">RUNNING</div></div>';
-
+    +'<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;padding:4px 0 8px;border-bottom:1px solid var(--bdr);font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px">'
+    +'<div>SHOOTER</div><div style="text-align:center">SGL</div><div style="text-align:center">PRS</div><div style="text-align:right">RUN</div></div>';
   members.forEach(function(m){
-    var pegScore = fitascE.scores[fitascE.parcours][fitascE.peg][m]||0;
-    var runScore = running[m]||0;
-    html += '<div style="display:grid;grid-template-columns:2fr 1fr 1fr;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:14px">'
+    var sc = fitascE.scores[fitascE.parcours][fitascE.peg][m]||{singles:0,pairs:0};
+    html += '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:14px">'
       +'<div style="color:var(--txt)">'+m.split(' ')[0]+'</div>'
-      +'<div style="color:var(--dim);text-align:center">'+pegScore+'/'+birdsPerPeg+'</div>'
-      +'<div style="color:var(--org);font-weight:700;text-align:right">'+runScore+'/'+birdsShot+'</div>'
+      +'<div style="color:var(--dim);text-align:center">'+(sc.singles||0)+'/'+singles+'</div>'
+      +'<div style="color:var(--dim);text-align:center">'+(sc.pairs||0)+'/'+(pairs*2)+'</div>'
+      +'<div style="color:var(--org);font-weight:700;text-align:right">'+(running[m]||0)+'/'+birdsShot+'</div>'
       +'</div>';
   });
   html += '</div>';
@@ -2796,47 +2802,31 @@ function fitascEShowSummary(){
   if(!allPegsDone){
     html += '<button onclick="fitascENextPeg()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; MOVE TO PEG '+(fitascE.peg+2)+'</button>';
   } else if(!allParcoursDone){
-    // Parcours complete
-    var maxBirds = birdsShot;
     html += '<div style="font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--hit);letter-spacing:2px;margin:12px 0 8px">PARCOURS '+(fitascE.parcours+1)+' TOTAL</div>'
       +'<div style="background:var(--surf2);border-radius:10px;padding:12px;margin-bottom:16px">';
     members.forEach(function(m){
       html += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:14px">'
         +'<span style="color:var(--txt)">'+m.split(' ')[0]+'</span>'
-        +'<span style="color:var(--org);font-weight:700">'+(running[m]||0)+'/'+maxBirds+'</span></div>';
+        +'<span style="color:var(--org);font-weight:700">'+(running[m]||0)+'/'+birdsShot+'</span></div>';
     });
-    html += '</div>'
-      +'<button onclick="fitascENextParcours()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; START PARCOURS '+(fitascE.parcours+2)+'</button>';
+    html += '</div><button onclick="fitascENextParcours()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; START PARCOURS '+(fitascE.parcours+2)+'</button>';
   } else {
-    // All done — grand totals
     var totalBirdsAll = 0;
-    fitascSetup.forEach(function(p){ p.pegs.forEach(function(pg){ totalBirdsAll+=pg.birds; }); });
-    var grandTotals = {};
-    members.forEach(function(m){ grandTotals[m]=0; });
-    Object.keys(fitascE.scores).forEach(function(pIdx){
-      Object.keys(fitascE.scores[pIdx]).forEach(function(gIdx){
-        members.forEach(function(m){ grandTotals[m]+=(fitascE.scores[pIdx][gIdx][m]||0); });
-      });
-    });
+    fitascSetup.forEach(function(p){ p.pegs.forEach(function(pg){ totalBirdsAll+=(pg.singles||5)+(pg.pairs||2)*2; }); });
     html += '<div style="font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--hit);letter-spacing:2px;margin:12px 0 8px">GRAND TOTAL — '+totalBirdsAll+' BIRDS</div>'
       +'<div style="background:var(--surf2);border-radius:10px;padding:12px;margin-bottom:16px">';
     members.forEach(function(m){
       html += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--bdr);font-family:DM Mono,monospace;font-size:14px">'
         +'<span style="color:var(--txt)">'+m.split(' ')[0]+'</span>'
-        +'<span style="color:var(--org);font-weight:700">'+(grandTotals[m]||0)+'/'+totalBirdsAll+'</span></div>';
+        +'<span style="color:var(--org);font-weight:700">'+fitascETotalForShooter(m)+'/'+totalBirdsAll+'</span></div>';
     });
-    html += '</div>'
-      +'<button onclick="switchToTrapper()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer">&#8617; SIGN OUT</button>';
+    html += '</div><button onclick="switchToTrapper()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer">&#8617; SIGN OUT</button>';
   }
 
   html += '</div>';
   el.innerHTML = html;
-  var _sb2 = document.getElementById('tr-station-bar');
-  var _sf2 = document.getElementById('tr-session-bar');
-  var _an2 = document.getElementById('tr-arrival-note');
-  if(_sb2) _sb2.style.display='none';
-  if(_sf2) _sf2.style.display='none';
-  if(_an2) _an2.style.display='none';
+  var _sb=document.getElementById('tr-station-bar'), _sf=document.getElementById('tr-session-bar'), _an=document.getElementById('tr-arrival-note');
+  if(_sb)_sb.style.display='none'; if(_sf)_sf.style.display='none'; if(_an)_an.style.display='none';
   document.getElementById('tr-empty').style.display='none';
   document.getElementById('tr-screen-squads').style.display='block';
   document.getElementById('tr-screen-scoring').style.display='none';
@@ -2844,20 +2834,19 @@ function fitascEShowSummary(){
 
 function fitascENextPeg(){
   fitascE.peg++;
-  // Rotation: next peg's first shooter advances by 1
+  fitascE.phase = 'singles'; fitascE.scored = 0;
   fitascE.shooterIdx = (fitascE.firstShooter + fitascE.peg) % S.squads[fitascE.squadIdx].members.length;
-  fitascE.scored = 0;
+  fitascE.firstShooter = fitascE.shooterIdx;
   fitascEPickFirst();
 }
 
 function fitascENextParcours(){
-  fitascE.parcours++;
-  fitascE.peg = 0;
-  fitascE.shooterIdx = 0;
-  fitascE.firstShooter = 0;
-  fitascE.scored = 0;
+  fitascE.parcours++; fitascE.peg = 0;
+  fitascE.phase = 'singles'; fitascE.scored = 0;
+  fitascE.shooterIdx = 0; fitascE.firstShooter = 0;
   fitascEPickFirst();
 }
+// ═══════════════════════════════════════════════
 // ═══════════════════════════════════════════════
 
 function startScoringSquad(squadIdx, keepStation) {
