@@ -210,7 +210,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
     <label class="lbl">Format</label>
     <div style="display:flex;gap:8px;margin-bottom:12px">
       <button id="fmt-standard" onclick="setImportFormat('standard')" class="btn btn-gold" style="flex:1;padding:10px;font-size:12px">Standard</button>
-      <button id="fmt-squadsheet" onclick="setImportFormat('squadsheet')" class="btn btn-grey" style="flex:1;padding:10px;font-size:12px">Squad Sheet</button>
+      <button id="fmt-squadsheet" onclick="setImportFormat('squadsheet')" class="btn btn-grey" style="flex:1;padding:10px;font-size:12px;display:none">Squad Sheet</button>
     </div>
     <label class="lbl">Paste Data</label>
     <textarea id="paste-box" class="inp ta" placeholder="Paste names from anywhere…&#10;&#10;Examples:&#10;John Smith&#10;Jane Doe, Bob Jones&#10;Or paste directly from registration software"></textarea>
@@ -1108,6 +1108,8 @@ var SQUAD_SHEET_CLUBS = ['hudson farm', 'griffin & howe', 'griffin and howe'];
 function checkClubFormat(val){
   var lower = val.toLowerCase().trim();
   var isSquadSheet = SQUAD_SHEET_CLUBS.some(function(c){ return lower.indexOf(c) !== -1; });
+  var sqBtn = document.getElementById('fmt-squadsheet');
+  if(sqBtn) sqBtn.style.display = isSquadSheet ? 'block' : 'none';
   setImportFormat(isSquadSheet ? 'squadsheet' : 'standard');
 }
 
