@@ -1418,14 +1418,26 @@ function importPaste(){
   var added = 0;
 
   if(parsedSquads.length > 0){
-    S.squads = parsedSquads;
-    localStorage.setItem('ct_squads', JSON.stringify(parsedSquads));
+    // Merge with existing squads — add new, don't overwrite existing
+    if(!S.squads) S.squads = [];
     parsedSquads.forEach(function(sq){
+      var existing = S.squads.find(function(s){ return String(s.label||s.num) === String(sq.label||sq.num); });
+      if(existing){
+        // Add any new members to existing squad
+        sq.members.forEach(function(n){
+          if(existing.members.indexOf(n)===-1){ existing.members.push(n); }
+        });
+      } else {
+        S.squads.push(sq);
+      }
       sq.members.forEach(function(n){
         if(S.shooters.indexOf(n)===-1){ S.shooters.push(n); added++; }
       });
     });
-    toast('Added '+added+' shooters in '+parsedSquads.length+' squads','green');
+    // Sort squads by number
+    S.squads.sort(function(a,b){ return (parseInt(a.label||a.num)||0)-(parseInt(b.label||b.num)||0); });
+    localStorage.setItem('ct_squads', JSON.stringify(S.squads));
+    toast('Added '+added+' shooters in '+parsedSquads.length+' squads — total: '+S.squads.length+' squads','green');
   } else {
     var lines = raw.split('\n');
     lines.forEach(function(line){
