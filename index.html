@@ -38,6 +38,73 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 .btn-org{background:var(--org);color:#fff;font-weight:700}
 .btn-full{width:100%}
 .btn-sm{padding:7px 12px;font-size:10px}
+
+@media (orientation:landscape) and (min-width:700px){
+  #app-wrap{max-width:100%;width:100%}
+
+  /* Header: logo left, BLACK CAT center, buttons right */
+  .hdr{display:grid;grid-template-columns:80px 1fr 160px;padding:10px 20px;align-items:center}
+  .hdr .logo{justify-self:start}
+  .hdr > div:last-child{justify-self:end}
+  /* Add centered title in landscape */
+  .hdr::after{content:'BLACK CAT CLAY SCORING';font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:3px;color:var(--gold);text-align:center;grid-column:2;position:absolute;left:50%;transform:translateX(-50%)}
+  .hdr{position:relative}
+  .logo{font-size:22px}
+
+  /* Nav tabs slightly smaller */
+  .tab{padding:9px 14px;font-size:9px}
+
+  /* Pages get more padding */
+  .pg{padding:14px 20px;padding-bottom:40px}
+
+  /* ── SETUP PAGE ── */
+  #pg-setup{display:none}
+  #pg-setup.on{display:grid;grid-template-columns:1fr 1.6fr;gap:16px;align-items:start}
+  #pg-setup > .card:first-child{margin-bottom:0}
+  #setup-right-col{display:flex;flex-direction:column;gap:12px}
+  #setup-right-col .card{margin-bottom:0}
+
+  /* ── ASSIGN PAGE ── */
+  #pg-assign{display:none}
+  #pg-assign.on{display:block}
+  #assign-body{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+  #assign-body .card{margin-bottom:0}
+
+  /* ── LIVE BOARD ── */
+  #pg-board{display:none}
+  #pg-board.on{display:block}
+
+  /* ── SCORE PAGE ── two columns */
+  #pg-score{display:none}
+  #pg-score.on{display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:start}
+
+  /* ── LEADER PAGE ── */
+  #pg-leader{display:none}
+  #pg-leader.on{display:block}
+
+  /* ── ADMIN PAGE ── */
+  #pg-admin{display:none}
+  #pg-admin.on{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+
+  /* ── SCORECARD PAGE ── */
+  #pg-scorecard{display:none}
+  #pg-scorecard.on{display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start}
+
+  /* ── SQUADS PAGE ── */
+  #pg-squads{display:none}
+  #pg-squads.on{display:block}
+
+  /* ── HISTORY PAGE ── */
+  #pg-history{display:none}
+  #pg-history.on{display:block}
+
+  /* Cards slightly more compact in landscape */
+  .card{padding:14px;margin-bottom:12px}
+  .ctitle{font-size:18px}
+
+  /* Board table — no horizontal scroll needed */
+  #board-body table{font-size:12px}
+}
 .chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
 .chip{background:var(--surf2);border:1px solid var(--bdr);border-radius:20px;padding:5px 12px;font-size:13px;display:flex;align-items:center;gap:7px}
 .chip .x{color:var(--miss);cursor:pointer;font-size:16px;line-height:1}
@@ -204,6 +271,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
       <button class="btn btn-grey btn-full mt8" onclick="buildFitascSetup()">🔄 Reset FITASC Setup</button>
     </div>
   </div>
+  <div id="setup-right-col">
   <div class="card">
     <div class="ctitle">📋 Import Shooters</div>
     <div class="info">Paste names from anywhere — registration software, email, notes, spreadsheet, or squad sheet format.</div>
@@ -256,6 +324,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
     </div>
   </div>
   <button class="btn btn-grey btn-full" onclick="newEvent()" style="font-size:13px;padding:12px;margin-top:10px">🗑 Clear & Start New Event</button>
+  </div><!-- end setup-right-col -->
 </div>
 
 <!-- ROSTER -->
