@@ -76,9 +76,10 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
   #pg-board{display:none}
   #pg-board.on{display:block}
 
-  /* ── SCORE PAGE ── two columns */
+  /* ── SCORE PAGE ── full width, no grid split */
   #pg-score{display:none}
-  #pg-score.on{display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:start}
+  #pg-score.on{display:block}
+  #sc-sel{flex-wrap:wrap !important}
 
   /* ── LEADER PAGE ── */
   #pg-leader{display:none}
@@ -1845,7 +1846,14 @@ function startRound(){
   if(!S.shooters.length && !S.squads.length){toast('Add shooters or build squads first');return;}
 
   var savedSquads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
-  if(savedSquads.length > 0 && S.squads.length === 0){ S.squads = savedSquads; }
+  if(savedSquads.length > 0){
+    // Merge saved squads with in-memory squads — covers multi-paste scenario
+    savedSquads.forEach(function(sq){
+      var exists = S.squads.find(function(s){ return String(s.label||s.num)===String(sq.label||sq.num); });
+      if(!exists) S.squads.push(sq);
+    });
+    S.squads.sort(function(a,b){ return (parseInt(a.label||a.num)||0)-(parseInt(b.label||b.num)||0); });
+  }
 
   S.name=n.toUpperCase();
   S.club = (document.getElementById('ev-club').value.trim()||'').toUpperCase();
