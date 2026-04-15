@@ -1216,22 +1216,38 @@ function parseSquadSheet(raw){
   var lines = raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
   lines.forEach(function(line){
     if(!line.trim()) return;
-    // Use global regex to find ALL team entries on a line (handles two-column layout)
-    var pattern = /(\d+)\s+([A-Za-z][A-Za-z\s\.\-\']+?)\s+(12|20|28|410)\b/g;
-    var match;
-    while((match = pattern.exec(line)) !== null){
-      var teamNum = parseInt(match[1]);
-      var name = match[2].trim();
-      var gauge = match[3]+'ga';
-      if(name.toLowerCase()==='shooter') continue;
-      var displayName = name + ' ('+gauge+')';
-      if(!squads[teamNum]) squads[teamNum] = [];
-      if(squads[teamNum].indexOf(displayName)===-1) squads[teamNum].push(displayName);
+    var cols = line.split('\t');
+
+    // Left side: col 0=squad, col 1=name, col 2=gauge(optional)
+    if(cols[0] && cols[1] && cols[1].trim() && /^\d+$/.test(cols[0].trim())){
+      var sq = parseInt(cols[0].trim());
+      var name = cols[1].trim().replace(/\/SM\s*$/i,'').trim();
+      var gauge = cols[2] && /^(12|20|28|410)$/.test(cols[2].trim()) ? cols[2].trim() : null;
+      if(name && name.length > 1 && name.toLowerCase() !== 'shooter'){
+        var dn = gauge ? name+' ('+gauge+'ga)' : name;
+        if(!squads[sq]) squads[sq]=[];
+        if(squads[sq].indexOf(dn)===-1) squads[sq].push(dn);
+      }
+    }
+
+    // Right side: col 5=squad, col 6=name, col 7=gauge(optional)
+    if(cols[5] && cols[6] && cols[6].trim() && /^\d+$/.test(cols[5].trim())){
+      var sq2 = parseInt(cols[5].trim());
+      var name2 = cols[6].trim().replace(/\/SM\s*$/i,'').trim();
+      var gauge2 = cols[7] && /^(12|20|28|410)$/.test(cols[7].trim()) ? cols[7].trim() : null;
+      if(name2 && name2.length > 1 && name2.toLowerCase() !== 'shooter'){
+        var dn2 = gauge2 ? name2+' ('+gauge2+'ga)' : name2;
+        if(!squads[sq2]) squads[sq2]=[];
+        if(squads[sq2].indexOf(dn2)===-1) squads[sq2].push(dn2);
+      }
     }
   });
+
   var result = [];
   Object.keys(squads).sort(function(a,b){ return parseInt(a)-parseInt(b); }).forEach(function(num){
-    result.push({ num: parseInt(num), label: String(num), members: squads[num], session: '' });
+    if(squads[num].length > 0){
+      result.push({ num: parseInt(num), label: String(num), members: squads[num], session: '' });
+    }
   });
   return result;
 }
