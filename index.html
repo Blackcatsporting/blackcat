@@ -778,8 +778,20 @@ function shooterEnterName(){
 }
 
 function drawShooterScorecard(log){
+  // Strip gauge suffix e.g. "(20ga)", "(12ga)" and Jr/Sr from names for matching
+  function cleanName(n){ 
+    return (n||'')
+      .replace(/\s*\(\d+(ga|gauge)\)/gi,'')
+      .replace(/\s*\bJr\.?\b\.?/gi,'')
+      .replace(/\s*\bSr\.?\b/gi,'')
+      .replace(/\s*\bIII?\b/gi,'')
+      .trim().toLowerCase(); 
+  }
   var myLog = log.filter(function(r){
-    return r.shooter && r.shooter.trim().toLowerCase() === shooterName.trim().toLowerCase();
+    return r.shooter && (
+      cleanName(r.shooter) === cleanName(shooterName) ||
+      r.shooter.trim().toLowerCase() === shooterName.trim().toLowerCase()
+    );
   });
   var el = document.getElementById('shooter-scorecard');
   if(!el) return;
