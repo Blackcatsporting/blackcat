@@ -1814,6 +1814,7 @@ function newEvent(){
   S.stationBirds=[]; S.shooters=[]; S.squads=[]; S.scores={}; S.active=''; S.eventType='SC';
   fiveStandRound = 1;
   fitascSetup = []; FITASC_PARCOURS = 4;
+  window._squadOrderSet = {};
   localStorage.removeItem('ct_fitasc_setup');
   localStorage.removeItem('ct_event_type');
   manualSquads = [];
@@ -3134,24 +3135,59 @@ function startScoringSquad(squadIdx, keepStation) {
   var squads   = S.squads.length ? S.squads : [{num:1, label:'1', members:S.shooters}];
   var squad    = squads[squadIdx];
 
-  // Never override trapStation — trapper selected their station, keep it
-
-  // Update Firebase — trapper is at this station with this squad
   updateStationStatus(trapStation+1, squad.label||squad.num, squad.members, 'waiting');
 
-  showOrderScreen(
-    squad.members,
-    'SQUAD ' + (squad.label||squad.num),
-    stationLabelShort() + ' ' + (trapStation+1) + ' — SET SHOOTING ORDER',
-    function(orderedMembers){
-      // Reorder squad members for this session
-      squad.members = orderedMembers;
-      trapMemberIdx = 0;
-      trapScoredCount = 0;
-      updateStationStatus(trapStation+1, squad.label||squad.num, orderedMembers, 'scoring');
-      scoreCurrentMember();
-    }
-  );
+  // Only show order screen on first station — after that rotation is set
+  var squadKey = String(squad.label||squad.num);
+  if(!window._squadOrderSet) window._squadOrderSet = {};
+
+  if(!window._squadOrderSet[squadKey]){
+    // First time — show order screen
+    showOrderScreen(
+      squad.members,
+      'SQUAD ' + (squad.label||squad.num),
+      stationLabelShort() + ' ' + (trapStation+1) + ' — SET SHOOTING ORDER',
+      function(orderedMembers){
+        squad.members = orderedMembers;
+        window._squadOrderSet[squadKey] = true;
+        trapMemberIdx = 0;
+        trapScoredCount = 0;
+        updateStationStatus(trapStation+1, squad.label||squad.num, orderedMembers, 'scoring');
+        scoreCurrentMember();
+      }
+    );
+  } else {
+    // Subsequent stations — auto-rotate, show confirmation
+    var firstName = squad.members[trapMemberIdx % squad.members.length];
+    var el = document.getElementById('tr-squad-list');
+    el.innerHTML = '<div style="text-align:center;padding:24px 16px">'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:22px;color:var(--gold);letter-spacing:2px;margin-bottom:4px">SQUAD '+(squad.label||squad.num)+'</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">'+stationLabel().toUpperCase()+' '+(trapStation+1)+'</div>'
+      +'<div style="background:var(--surf2);border:2px solid var(--gold);border-radius:12px;padding:20px;margin-bottom:24px">'
+      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:8px">FIRST SHOOTER</div>'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:32px;color:var(--gold);letter-spacing:2px">'+firstName+'</div>'
+      +'</div>'
+      +'<button id="sc-auto-start" style="display:block;width:100%;padding:18px;background:var(--gold);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#0f0f07;cursor:pointer">&#9658; START '+stationLabel().toUpperCase()+' '+(trapStation+1)+'</button>'
+      +'</div>';
+    setTimeout(function(){
+      var btn = document.getElementById('sc-auto-start');
+      if(btn){
+        btn.addEventListener('click', function(){
+          trapScoredCount = 0;
+          updateStationStatus(trapStation+1, squad.label||squad.num, squad.members, 'scoring');
+          scoreCurrentMember();
+        });
+        btn.addEventListener('touchstart', function(e){ e.preventDefault();
+          trapScoredCount = 0;
+          updateStationStatus(trapStation+1, squad.label||squad.num, squad.members, 'scoring');
+          scoreCurrentMember();
+        },{passive:false});
+      }
+    }, 50);
+    document.getElementById('tr-empty').style.display='none';
+    document.getElementById('tr-screen-squads').style.display='block';
+    document.getElementById('tr-screen-scoring').style.display='none';
+  }
 }
 
 // Show the current member's scoring screen
