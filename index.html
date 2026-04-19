@@ -40,7 +40,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 .btn-sm{padding:7px 12px;font-size:10px}
 .sq-sheet-btn{display:none !important}
 
-@media (orientation:landscape) and (min-width:700px){
+@media (orientation:landscape) and (min-width:900px){
   #app-wrap{max-width:100%;width:100%}
 
   /* Header: logo left, BLACK CAT center, buttons right */
@@ -2578,18 +2578,39 @@ function fs5Init(squadIdx){
 
 function fs5PickFirst(){
   var squad = S.squads[fs5.squadIdx];
-  var el = document.getElementById('tr-squad-list');
-  var html = '<div style="text-align:center;padding:16px 0 20px">'
-    +'<div style="font-family:Bebas Neue,sans-serif;font-size:22px;color:var(--gold);letter-spacing:2px;margin-bottom:4px">ROUND '+fs5.round+' — ROTATION '+(fs5.rotation+1)+'</div>'
-    +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">SCORE IN ANY ORDER — WHO IS FIRST?</div>';
-  squad.members.forEach(function(name, i){
-    html += '<button onclick="fs5SetFirst('+i+')" style="display:block;width:100%;text-align:left;background:var(--surf);border:3px solid var(--gold);border-radius:10px;padding:18px;margin-bottom:10px;font-size:20px;font-weight:700;color:var(--txt);cursor:pointer;font-family:DM Sans,sans-serif;-webkit-tap-highlight-color:transparent">'+name+'</button>';
-  });
-  html += '</div>';
-  el.innerHTML = html;
-  document.getElementById('tr-empty').style.display='none';
-  document.getElementById('tr-screen-squads').style.display='block';
-  document.getElementById('tr-screen-scoring').style.display='none';
+  var members = squad.members;
+
+  if(fs5.rotation === 0 && fs5.round === 1){
+    // First rotation — show order screen
+    showOrderScreen(
+      members,
+      'ROUND '+fs5.round+' — STAND 1',
+      'SET SHOOTING ORDER',
+      function(orderedMembers){
+        // Store ordered members back into squad
+        S.squads[fs5.squadIdx].members = orderedMembers;
+        fs5.shooterIdx = 0;
+        fs5.scored = 0;
+        fs5ScoreNext();
+      }
+    );
+  } else {
+    // Subsequent rotations — show auto confirmation
+    var name = members[fs5.shooterIdx % members.length];
+    var el = document.getElementById('tr-squad-list');
+    el.innerHTML = '<div style="text-align:center;padding:24px 16px">'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:22px;color:var(--gold);letter-spacing:2px;margin-bottom:4px">ROUND '+fs5.round+' — STAND '+(fs5.rotation+1)+'</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">'+members.length+' SHOOTERS · '+(S.stationBirds[fs5.rotation]||S.birds||5)+' BIRDS</div>'
+      +'<div style="background:var(--surf2);border:2px solid var(--gold);border-radius:12px;padding:20px;margin-bottom:24px">'
+      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:8px">FIRST SHOOTER</div>'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:32px;color:var(--gold);letter-spacing:2px">'+name+'</div>'
+      +'</div>'
+      +'<button onclick="fs5SetFirst('+fs5.shooterIdx+')" style="display:block;width:100%;padding:18px;background:var(--gold);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#0f0f07;cursor:pointer">&#9658; START STAND '+(fs5.rotation+1)+'</button>'
+      +'</div>';
+    document.getElementById('tr-empty').style.display='none';
+    document.getElementById('tr-screen-squads').style.display='block';
+    document.getElementById('tr-screen-scoring').style.display='none';
+  }
 }
 
 function fs5SetFirst(idx){
@@ -2777,29 +2798,30 @@ function fitascEInit(squadIdx){
 
 function fitascEPickFirst(){
   var squad = S.squads[fitascE.squadIdx];
-  var el = document.getElementById('tr-squad-list');
+  var members = squad.members;
   var pegSetup = fitascSetup[fitascE.parcours] && fitascSetup[fitascE.parcours].pegs[fitascE.peg];
   var singles = pegSetup ? (pegSetup.singles||5) : 5;
   var pairs   = pegSetup ? (pegSetup.pairs||2)   : 2;
-  var html = '<div style="text-align:center;padding:16px 0 20px">'
-    +'<div style="font-family:Bebas Neue,sans-serif;font-size:22px;color:var(--org);letter-spacing:2px;margin-bottom:4px">PARCOURS '+(fitascE.parcours+1)+' — PEG '+(fitascE.peg+1)+'</div>'
-    +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:4px">'+singles+' SINGLES · '+pairs+' PAIRS ('+pairs*2+' BIRDS) · '+(singles+pairs*2)+' TOTAL</div>'
-    +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--org);letter-spacing:2px;margin-bottom:20px">WHO SHOOTS FIRST?</div>';
-  squad.members.forEach(function(name, i){
-    html += '<button onclick="fitascESetFirst('+i+')" style="display:block;width:100%;text-align:left;background:var(--surf);border:3px solid var(--org);border-radius:10px;padding:18px;margin-bottom:10px;font-size:20px;font-weight:700;color:var(--txt);cursor:pointer;font-family:DM Sans,sans-serif;-webkit-tap-highlight-color:transparent">'+name+'</button>';
-  });
-  html += '</div>';
-  el.innerHTML = html;
-  var _sb=document.getElementById('tr-station-bar'), _sf=document.getElementById('tr-session-bar'), _an=document.getElementById('tr-arrival-note');
-  if(_sb)_sb.style.display='none'; if(_sf)_sf.style.display='none'; if(_an)_an.style.display='none';
-  document.getElementById('tr-empty').style.display='none';
-  document.getElementById('tr-screen-squads').style.display='block';
-  document.getElementById('tr-screen-scoring').style.display='none';
-  setTimeout(function(){
-    el.querySelectorAll('button').forEach(function(btn,i){
-      btn.addEventListener('touchend',function(e){e.preventDefault();fitascESetFirst(i);});
-    });
-  },100);
+
+  if(fitascE.peg === 0 && fitascE.parcours === 0){
+    // First peg ever — show order screen
+    showOrderScreen(
+      members,
+      'PARCOURS 1 — PEG 1',
+      singles+' SINGLES · '+pairs+' PAIRS · '+(singles+pairs*2)+' TOTAL',
+      function(orderedMembers){
+        S.squads[fitascE.squadIdx].members = orderedMembers;
+        fitascE.shooterIdx = 0;
+        fitascE.firstShooter = 0;
+        fitascE.scored = 0;
+        fitascE.phase = 'singles';
+        fitascEScoreNext();
+      }
+    );
+  } else {
+    // Subsequent pegs — show auto confirmation
+    fitascEShowAutoStart();
+  }
 }
 
 function fitascESetFirst(idx){
@@ -2981,7 +3003,35 @@ function fitascENextPeg(){
   var members = S.squads[fitascE.squadIdx].members;
   fitascE.firstShooter = (fitascE.firstShooter + 2) % members.length;
   fitascE.shooterIdx = fitascE.firstShooter;
-  fitascEPickFirst();
+  // Peg 2+ — show auto confirmation, don't ask who goes first
+  fitascEShowAutoStart();
+}
+
+function fitascEShowAutoStart(){
+  var squad = S.squads[fitascE.squadIdx];
+  var members = squad.members;
+  var firstShooterName = members[fitascE.firstShooter % members.length];
+  var el = document.getElementById('tr-squad-list');
+  var pegSetup = fitascSetup[fitascE.parcours] && fitascSetup[fitascE.parcours].pegs[fitascE.peg];
+  var singles = pegSetup ? (pegSetup.singles||5) : 5;
+  var pairs   = pegSetup ? (pegSetup.pairs||2)   : 2;
+
+  var html = '<div style="text-align:center;padding:24px 16px">'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:22px;color:var(--org);letter-spacing:2px;margin-bottom:4px">PARCOURS '+(fitascE.parcours+1)+' — PEG '+(fitascE.peg+1)+'</div>'
+    +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:20px">'+singles+' SINGLES · '+pairs+' PAIRS · '+(singles+pairs*2)+' TOTAL</div>'
+    +'<div style="background:var(--surf2);border:2px solid var(--org);border-radius:12px;padding:20px;margin-bottom:24px">'
+    +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:8px">FIRST SHOOTER</div>'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:32px;color:var(--org);letter-spacing:2px">'+firstShooterName+'</div>'
+    +'</div>'
+    +'<button onclick="fitascESetFirst('+fitascE.firstShooter+')" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; START PEG '+(fitascE.peg+1)+'</button>'
+    +'</div>';
+
+  el.innerHTML = html;
+  var _sb=document.getElementById('tr-station-bar'), _sf=document.getElementById('tr-session-bar'), _an=document.getElementById('tr-arrival-note');
+  if(_sb)_sb.style.display='none'; if(_sf)_sf.style.display='none'; if(_an)_an.style.display='none';
+  document.getElementById('tr-empty').style.display='none';
+  document.getElementById('tr-screen-squads').style.display='block';
+  document.getElementById('tr-screen-scoring').style.display='none';
 }
 
 function fitascENextParcours(){
@@ -2991,6 +3041,85 @@ function fitascENextParcours(){
   fitascEPickFirst();
 }
 // ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════
+// SHARED SHOOTING ORDER SCREEN
+// ═══════════════════════════════════════════════
+var _orderCallback = null;  // called with ordered members array when confirmed
+
+function showOrderScreen(members, title, subtitle, callback){
+  _orderCallback = callback;
+  var order = [];
+
+  var el = document.getElementById('tr-squad-list');
+
+  function render(){
+    var html = '<div style="text-align:center;padding:16px 0 12px">'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:22px;color:var(--gold);letter-spacing:2px;margin-bottom:4px">'+title+'</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:12px">'+subtitle+'</div>'
+      +'<div style="background:var(--surf2);border-radius:8px;padding:10px 12px;margin-bottom:14px;min-height:40px">'
+      +'<div style="font-family:DM Mono,monospace;font-size:9px;color:var(--dim);letter-spacing:2px;margin-bottom:6px">SHOOTING ORDER</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:6px" id="order-chips">';
+    if(order.length === 0){
+      html += '<span style="font-family:DM Mono,monospace;font-size:10px;color:var(--bdr);letter-spacing:1px">Tap names below...</span>';
+    } else {
+      order.forEach(function(name, i){
+        html += '<div style="background:var(--surf);border:1px solid var(--gold);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--gold);font-family:DM Mono,monospace">'+(i+1)+'. '+name.split(' ')[0]+'</div>';
+      });
+    }
+    html += '</div></div>';
+
+    members.forEach(function(name, mi){
+      var pos = order.indexOf(name);
+      var selected = pos > -1;
+      html += '<button data-mi="'+mi+'" style="display:flex;align-items:center;width:100%;text-align:left;background:'+(selected?'var(--surf2)':'var(--surf)')+';border:2px solid '+(selected?'var(--gold)':'var(--bdr)')+';border-radius:10px;padding:14px 16px;margin-bottom:10px;cursor:pointer;-webkit-tap-highlight-color:transparent">'
+        +'<div style="width:34px;height:34px;border-radius:50%;background:'+(selected?'var(--gold)':'var(--surf2)')+';border:2px solid '+(selected?'var(--gold)':'var(--bdr)')+';display:flex;align-items:center;justify-content:center;font-family:Bebas Neue,sans-serif;font-size:18px;color:'+(selected?'#0f0f07':'var(--dim)')+';flex-shrink:0;margin-right:14px">'+(selected?(pos+1):'—')+'</div>'
+        +'<div style="flex:1">'
+        +'<div style="font-size:18px;font-weight:600;color:var(--txt)">'+name+'</div>'
+        +(selected?'<div style="font-family:DM Mono,monospace;font-size:9px;color:var(--dim);letter-spacing:1px">TAP TO REMOVE</div>':'')
+        +'</div></button>';
+    });
+
+    var allSet = order.length === members.length;
+    html += '<button id="order-confirm-btn" style="display:block;width:100%;padding:16px;background:var(--gold);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#0f0f07;cursor:pointer;opacity:'+(allSet?'1':'0.35')+';margin-top:4px"'+(allSet?'':' disabled')+'>&#9658; START SCORING</button>';
+    html += '</div>';
+
+    el.innerHTML = html;
+
+    // Wire button events after render
+    el.querySelectorAll('button[data-mi]').forEach(function(btn){
+      var mi = parseInt(btn.getAttribute('data-mi'));
+      btn.addEventListener('click', function(){ window.orderToggle(members[mi]); });
+      btn.addEventListener('touchend', function(e){ e.preventDefault(); window.orderToggle(members[mi]); });
+    });
+    var confirmBtn = document.getElementById('order-confirm-btn');
+    if(confirmBtn) confirmBtn.addEventListener('click', function(){ window.orderConfirm(); });
+  }
+
+  window.orderToggle = function(name){
+    var pos = order.indexOf(name);
+    if(pos > -1){
+      order.splice(pos, 1);
+    } else {
+      order.push(name);
+    }
+    render();
+  };
+
+  window.orderConfirm = function(){
+    if(order.length !== members.length) return;
+    if(_orderCallback) _orderCallback(order);
+  };
+
+  var _sb=document.getElementById('tr-station-bar'), _sf=document.getElementById('tr-session-bar'), _an=document.getElementById('tr-arrival-note');
+  if(_sb)_sb.style.display='none'; if(_sf)_sf.style.display='none'; if(_an)_an.style.display='none';
+  document.getElementById('tr-empty').style.display='none';
+  document.getElementById('tr-screen-squads').style.display='block';
+  document.getElementById('tr-screen-scoring').style.display='none';
+
+  render();
+}
 // ═══════════════════════════════════════════════
 
 function startScoringSquad(squadIdx, keepStation) {
@@ -3005,40 +3134,19 @@ function startScoringSquad(squadIdx, keepStation) {
   // Update Firebase — trapper is at this station with this squad
   updateStationStatus(trapStation+1, squad.label||squad.num, squad.members, 'waiting');
 
-  var el = document.getElementById('tr-squad-list');
-  el.innerHTML = '';
-
-  var heading = document.createElement('div');
-  heading.style.cssText = 'text-align:center;font-family:Bebas Neue,sans-serif;font-size:28px;letter-spacing:3px;color:var(--gold);padding:14px 0 6px;margin-bottom:4px';
-  heading.textContent = 'SQUAD ' + (squad.label||squad.num);
-  el.appendChild(heading);
-
-  var sub = document.createElement('div');
-  sub.style.cssText = 'text-align:center;font-family:DM Mono,monospace;font-size:11px;color:var(--org);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px';
-  sub.textContent = 'Who is shooting first?';
-  el.appendChild(sub);
-
-  squad.members.forEach(function(name, mi) {
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.style.cssText = 'display:block;width:100%;text-align:left;background:var(--surf);border:3px solid var(--gold);border-radius:10px;padding:20px 18px;margin-bottom:12px;font-size:24px;font-weight:700;color:var(--txt);cursor:pointer;font-family:DM Sans,sans-serif';
-    btn.textContent = name;
-    btn.onclick = (function(startIdx){ return function(){
-      trapMemberIdx  = startIdx;
+  showOrderScreen(
+    squad.members,
+    'SQUAD ' + (squad.label||squad.num),
+    stationLabelShort() + ' ' + (trapStation+1) + ' — SET SHOOTING ORDER',
+    function(orderedMembers){
+      // Reorder squad members for this session
+      squad.members = orderedMembers;
+      trapMemberIdx = 0;
       trapScoredCount = 0;
-      // Update station status to scoring
-      updateStationStatus(trapStation+1, squad.label||squad.num, squad.members, 'scoring');
+      updateStationStatus(trapStation+1, squad.label||squad.num, orderedMembers, 'scoring');
       scoreCurrentMember();
-    }; })(mi);
-    el.appendChild(btn);
-  });
-
-  var back = document.createElement('button');
-  back.type = 'button';
-  back.style.cssText = 'display:block;width:100%;padding:12px;margin-top:8px;background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;color:var(--dim);font-family:DM Mono,monospace;font-size:12px;letter-spacing:1px;cursor:pointer;text-transform:uppercase';
-  back.textContent = '← Back to Squads';
-  back.onclick = function(){ drawTrapperPick(); };
-  el.appendChild(back);
+    }
+  );
 }
 
 // Show the current member's scoring screen
