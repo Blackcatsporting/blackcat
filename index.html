@@ -3087,14 +3087,19 @@ function showOrderScreen(members, title, subtitle, callback){
 
     el.innerHTML = html;
 
-    // Wire button events after render
-    el.querySelectorAll('button[data-mi]').forEach(function(btn){
-      var mi = parseInt(btn.getAttribute('data-mi'));
-      btn.addEventListener('click', function(){ window.orderToggle(members[mi]); });
-      btn.addEventListener('touchend', function(e){ e.preventDefault(); window.orderToggle(members[mi]); });
-    });
-    var confirmBtn = document.getElementById('order-confirm-btn');
-    if(confirmBtn) confirmBtn.addEventListener('click', function(){ window.orderConfirm(); });
+    // Wire button events after render — iOS needs touchstart
+    setTimeout(function(){
+      el.querySelectorAll('button[data-mi]').forEach(function(btn){
+        var mi = parseInt(btn.getAttribute('data-mi'));
+        btn.addEventListener('click', function(){ window.orderToggle(members[mi]); });
+        btn.addEventListener('touchstart', function(e){ e.preventDefault(); window.orderToggle(members[mi]); },{passive:false});
+      });
+      var confirmBtn = document.getElementById('order-confirm-btn');
+      if(confirmBtn){
+        confirmBtn.addEventListener('click', function(){ window.orderConfirm(); });
+        confirmBtn.addEventListener('touchstart', function(e){ e.preventDefault(); window.orderConfirm(); },{passive:false});
+      }
+    }, 50);
   }
 
   window.orderToggle = function(name){
