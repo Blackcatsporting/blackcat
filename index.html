@@ -1438,7 +1438,7 @@ function importPaste(){
     // Sort squads by number
     S.squads.sort(function(a,b){ return (parseInt(a.label||a.num)||0)-(parseInt(b.label||b.num)||0); });
     localStorage.setItem('ct_squads', JSON.stringify(S.squads));
-    toast('Added '+added+' shooters in '+parsedSquads.length+' squads — total: '+S.squads.length+' squads — parsed: '+parsedSquads.map(function(s){return s.label;}).join(','),'green');
+    toast('Added '+added+' shooters in '+parsedSquads.length+' squads — total: '+S.squads.length+' squads','green');
   } else {
     var lines = raw.split('\n');
     lines.forEach(function(line){
