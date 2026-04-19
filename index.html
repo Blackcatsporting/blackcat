@@ -2977,8 +2977,10 @@ function fitascEShowSummary(){
 function fitascENextPeg(){
   fitascE.peg++;
   fitascE.phase = 'singles'; fitascE.scored = 0;
-  fitascE.shooterIdx = (fitascE.firstShooter + fitascE.peg) % S.squads[fitascE.squadIdx].members.length;
-  fitascE.firstShooter = fitascE.shooterIdx;
+  // Advance first shooter by 2 each peg (FITASC standard rotation)
+  var members = S.squads[fitascE.squadIdx].members;
+  fitascE.firstShooter = (fitascE.firstShooter + 2) % members.length;
+  fitascE.shooterIdx = fitascE.firstShooter;
   fitascEPickFirst();
 }
 
