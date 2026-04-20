@@ -164,7 +164,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1776704257 -->
+<!-- build:1776705717 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -4991,28 +4991,61 @@ function drawScorecard(){
       });
     });
   } else {
-    // SC / 5-Stand
+    // SC / 5-Stand — horizontal layout: stations across top, X/O in rows
     var stationData = {};
     shooterLog.forEach(function(r){ stationData[r.station]={dead:r.dead,lost:r.lost,total:r.total,birds:r.birds}; });
     var numStations = S.started ? S.stations : (Object.keys(stationData).length ? Math.max.apply(null,Object.keys(stationData).map(Number))+1 : 10);
-    html+='<div>';
+
+    // Build horizontal table
+    html += '<div style="overflow-x:auto">';
+    html += '<table style="width:100%;border-collapse:collapse;font-family:DM Mono,monospace;font-size:12px">';
+
+    // Header row — station numbers
+    html += '<thead><tr>';
+    html += '<th style="padding:8px 10px;text-align:left;background:var(--surf2);border-bottom:1px solid var(--bdr);font-family:Bebas Neue,sans-serif;font-size:13px;color:var(--gold);letter-spacing:1px;white-space:nowrap">'+stationLabel().toUpperCase()+'</th>';
+    for(var i=0;i<numStations;i++){
+      html += '<th style="padding:8px 6px;text-align:center;background:var(--surf2);border-bottom:1px solid var(--bdr);font-family:Bebas Neue,sans-serif;font-size:14px;color:var(--gold);letter-spacing:1px;min-width:32px">'+(i+1)+'</th>';
+    }
+    html += '<th style="padding:8px 10px;text-align:right;background:var(--surf2);border-bottom:1px solid var(--bdr);font-family:Bebas Neue,sans-serif;font-size:13px;color:#00aaff;letter-spacing:1px">TOTAL</th>';
+    html += '</tr></thead>';
+
+    // Birds row — X/O for each station
+    html += '<tbody><tr>';
+    html += '<td style="padding:8px 10px;background:var(--surf);border-bottom:1px solid var(--bdr);font-size:10px;color:var(--dim);letter-spacing:1px;white-space:nowrap">BIRDS</td>';
+    for(var i=0;i<numStations;i++){
+      var st = stationData[i];
+      var cellBg = i%2===0 ? 'var(--surf)' : 'var(--surf2)';
+      html += '<td style="padding:6px 4px;text-align:center;background:'+cellBg+';border-bottom:1px solid var(--bdr);vertical-align:middle">';
+      if(st && st.birds && st.birds.length){
+        html += st.birds.map(function(b){
+          return b===true
+            ? '<div style="color:var(--hit);font-weight:700;font-size:12px;line-height:1.4">X</div>'
+            : b===false
+            ? '<div style="color:var(--miss);font-weight:700;font-size:12px;line-height:1.4">O</div>'
+            : '<div style="color:var(--bdr);font-size:12px;line-height:1.4">-</div>';
+        }).join('');
+      } else if(st){
+        html += '<div style="color:var(--hit);font-size:11px">'+st.dead+'✓</div>';
+      } else {
+        html += '<div style="color:var(--bdr);font-size:11px">—</div>';
+      }
+      html += '</td>';
+    }
+    html += '<td style="padding:8px 10px;text-align:right;background:var(--surf);border-bottom:1px solid var(--bdr)"></td>';
+    html += '</tr>';
+
+    // Score row — dead/total per station
+    html += '<tr>';
+    html += '<td style="padding:8px 10px;background:var(--surf2);font-size:10px;color:var(--dim);letter-spacing:1px;white-space:nowrap">SCORE</td>';
     for(var i=0;i<numStations;i++){
       var st=stationData[i];
       var dead2=st?st.dead:0, total2=st?st.total:(S.stationBirds[i]||S.birds||10);
-      grandDead+=dead2; grandTotal+=total2;
-      var rowBg2=i%2===0?'var(--surf)':'var(--surf2)';
-      html+='<div style="display:flex;align-items:center;padding:10px 16px;background:'+rowBg2+';border-bottom:1px solid var(--bdr)">';
-      html+='<div style="font-family:Bebas Neue,sans-serif;font-size:16px;color:var(--gold);width:100px;letter-spacing:1px">'+stationLabel()+' '+(i+1)+'</div>';
-      if(st){
-        var birdsHtml2 = st.birds && st.birds.length ? st.birds.map(function(b){ return b===true?'<span style="color:var(--hit);font-weight:700">X</span>':b===false?'<span style="color:var(--miss);font-weight:700">O</span>':'<span style="color:var(--bdr)">-</span>'; }).join(' ') : '<span style="color:var(--hit)">'+dead2+' Dead</span>';
-        html+='<div style="flex:1;font-family:DM Mono,monospace;font-size:14px;letter-spacing:3px">'+birdsHtml2+'</div>';
-        html+='<div style="font-family:Bebas Neue,sans-serif;font-size:18px;color:var(--txt);min-width:50px;text-align:right">'+dead2+'/'+total2+'</div>';
-      } else {
-        html+='<div style="flex:1;font-family:DM Mono,monospace;font-size:12px;color:var(--bdr)">not submitted</div>';
-      }
-      html+='</div>';
+      grandDead+=dead2;
+      var cellBg2 = i%2===0 ? 'var(--surf2)' : 'var(--surf)';
+      html += '<td style="padding:8px 4px;text-align:center;background:'+cellBg2+';font-family:Bebas Neue,sans-serif;font-size:14px;color:'+(st?'var(--txt)':'var(--bdr)')+'">'+( st ? dead2+'/'+total2 : '—' )+'</td>';
     }
-    html+='</div>';
+    html += '<td style="padding:8px 10px;text-align:right;background:var(--surf2);font-family:Bebas Neue,sans-serif;font-size:18px;color:#00ccff">'+grandDead+'</td>';
+    html += '</tr></tbody></table></div>';
   }
 
   var grandPct=grandTotal>0?Math.round(grandDead/grandTotal*100):0;
