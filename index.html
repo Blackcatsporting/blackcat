@@ -164,7 +164,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1776679877 -->
+<!-- build:1776704257 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -1815,6 +1815,7 @@ function newEvent(){
   fiveStandRound = 1;
   fitascSetup = []; FITASC_PARCOURS = 4;
   window._squadOrderSet = {};
+  window._squadStationCount = {};
   localStorage.removeItem('ct_fitasc_setup');
   localStorage.removeItem('ct_event_type');
   manualSquads = [];
@@ -3157,8 +3158,16 @@ function startScoringSquad(squadIdx, keepStation) {
       }
     );
   } else {
-    // Subsequent stations — auto-rotate, show confirmation
-    var firstName = squad.members[trapMemberIdx % squad.members.length];
+    // Subsequent stations — auto-rotate by 1 from previous station start
+    // stationRotation tracks how many stations this squad has completed
+    if(!window._squadStationCount) window._squadStationCount = {};
+    var squadKey2 = String(squad.label||squad.num);
+    if(!window._squadStationCount[squadKey2]) window._squadStationCount[squadKey2] = 0;
+    window._squadStationCount[squadKey2]++;
+    var stationNum = window._squadStationCount[squadKey2];
+    var firstIdx = stationNum % squad.members.length;
+    trapMemberIdx = firstIdx;
+    var firstName = squad.members[firstIdx];
     var el = document.getElementById('tr-squad-list');
     el.innerHTML = '<div style="text-align:center;padding:24px 16px">'
       +'<div style="font-family:Bebas Neue,sans-serif;font-size:22px;color:var(--gold);letter-spacing:2px;margin-bottom:4px">SQUAD '+(squad.label||squad.num)+'</div>'
