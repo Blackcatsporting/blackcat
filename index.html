@@ -164,7 +164,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1776709704 -->
+<!-- build:1776807740 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -310,11 +310,11 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
   <div class="card" style="margin-top:14px">
     <div class="ctitle" style="color:var(--dim);font-size:16px">🔒 Admin PIN</div>
     <div style="display:flex;gap:10px;align-items:center">
-      <input id="new-pin-inp" class="inp" type="password" inputmode="numeric" maxlength="4" placeholder="New PIN" style="max-width:140px;font-size:20px;letter-spacing:4px;text-align:center" disabled>
-      <button id="change-pin-btn" class="btn btn-grey" onclick="changeAdminPin()" style="white-space:nowrap;opacity:0.4;cursor:not-allowed" disabled>Change PIN</button>
+      <input id="new-pin-inp" class="inp" type="password" inputmode="numeric" maxlength="4" placeholder="New PIN" style="max-width:140px;font-size:20px;letter-spacing:4px;text-align:center">
+      <button id="change-pin-btn" class="btn btn-gold" onclick="changeAdminPin()" style="white-space:nowrap">Change PIN</button>
     </div>
-    <div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);margin-top:6px;letter-spacing:1px">Current PIN: <span id="current-pin-display">****</span></div>
-    <div id="pin-status-msg" style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);margin-top:4px;letter-spacing:1px">Start a round to enable PIN change</div>
+    <div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);margin-top:6px;letter-spacing:1px">Current PIN: <span id="current-pin-display">----</span></div>
+    <div id="pin-status-msg" style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);margin-top:4px;letter-spacing:1px">PIN is stored at club level — persists across all events</div>
   </div>
 
   <button class="btn btn-gold btn-full" onclick="startRound()" style="font-size:15px;padding:15px">🎯 Start Round</button>
@@ -326,7 +326,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
       <div id="shooter-qr" style="display:inline-block;background:#fff;padding:10px;border-radius:8px"></div>
     </div>
   </div>
-  <button class="btn btn-grey btn-full" onclick="newEvent()" style="font-size:13px;padding:12px;margin-top:10px">🗑 Clear & Start New Event</button>
+  <button class="btn btn-grey btn-full" onclick="confirmNewEvent()" style="font-size:13px;padding:12px;margin-top:10px">🗑 Clear & Start New Event</button>
   </div><!-- end setup-right-col -->
 </div>
 
@@ -894,6 +894,7 @@ function startAsAdmin() {
   document.getElementById('startup-overlay').style.display = 'none';
   document.getElementById('app-wrap').style.display = 'block';
   setMode('admin');
+  unlockPinChange();
 }
 
 function showTrapperNameStep() {
@@ -1361,9 +1362,8 @@ function changeAdminPin(){
   var pin = inp.value.trim();
   if(pin.length < 4){ toast('PIN must be 4 digits'); return; }
   if(!/^\d{4}$/.test(pin)){ toast('PIN must be numbers only'); return; }
-  // Store in localStorage AND Firebase under event key
   localStorage.setItem('ct_admin_pin', pin);
-  if(db && S.started){
+  if(db){
     db.ref(getClubKey()+'/ct_admin_pin').set(pin);
   }
   inp.value = '';
@@ -1372,21 +1372,22 @@ function changeAdminPin(){
 }
 
 function unlockPinChange(){
-  var btn = document.getElementById('change-pin-btn');
-  var inp = document.getElementById('new-pin-inp');
   var msg = document.getElementById('pin-status-msg');
-  if(btn){ btn.disabled=false; btn.style.opacity='1'; btn.style.cursor='pointer'; }
-  if(inp){ inp.disabled=false; }
-  if(msg){ msg.textContent='PIN is tied to this event code: '+getKey(); }
-  // Load PIN from Firebase if available
+  if(msg){ msg.textContent='PIN stored at club level — persists across all events'; }
   if(db){
     db.ref(getClubKey()+'/ct_admin_pin').once('value').then(function(snap){
       if(snap.val()){
         localStorage.setItem('ct_admin_pin', snap.val());
         var disp = document.getElementById('current-pin-display');
         if(disp) disp.textContent = snap.val();
+      } else {
+        var disp = document.getElementById('current-pin-display');
+        if(disp) disp.textContent = localStorage.getItem('ct_admin_pin')||'0000';
       }
     });
+  } else {
+    var disp = document.getElementById('current-pin-display');
+    if(disp) disp.textContent = localStorage.getItem('ct_admin_pin')||'0000';
   }
 }
 
@@ -1747,6 +1748,175 @@ function stationLabelShort(){
   if(S.eventType==='FITASC')  return 'PEG';
   if(S.eventType==='5STAND')  return 'STD';
   return 'STA';
+}
+
+// ── PIN-protected New Event ──────────────────────────────────
+function confirmNewEvent(){
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:999999;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box';
+  overlay.innerHTML = '<div style="background:var(--surf);border:2px solid var(--miss);border-radius:14px;padding:28px;width:100%;max-width:320px;text-align:center">'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:24px;color:var(--miss);letter-spacing:2px;margin-bottom:6px">⚠ CLEAR EVENT</div>'
+    +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px;margin-bottom:20px">Enter admin PIN to clear all data and start a new event</div>'
+    +'<input id="new-event-pin-inp" type="password" inputmode="numeric" maxlength="4" class="inp" style="font-size:36px;text-align:center;letter-spacing:8px;padding:16px;margin-bottom:16px">'
+    +'<div style="display:flex;gap:10px">'
+    +'<button onclick="this.closest(\'div[style*=999999]\').remove()" style="flex:1;padding:14px;background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;color:var(--txt);font-family:DM Mono,monospace;font-size:12px;cursor:pointer">Cancel</button>'
+    +'<button onclick="checkNewEventPin()" style="flex:2;padding:14px;background:var(--miss);border:none;border-radius:8px;color:#fff;font-family:Bebas Neue,sans-serif;font-size:20px;letter-spacing:1px;cursor:pointer">CLEAR</button>'
+    +'</div></div>';
+  document.body.appendChild(overlay);
+  setTimeout(function(){ var inp=document.getElementById('new-event-pin-inp'); if(inp) inp.focus(); },100);
+  document.getElementById('new-event-pin-inp').addEventListener('keydown',function(e){ if(e.key==='Enter') checkNewEventPin(); });
+}
+
+function checkNewEventPin(){
+  var pin = document.getElementById('new-event-pin-inp').value;
+  var adminPin = localStorage.getItem('ct_admin_pin')||'0000';
+  function verify(ap){
+    if(pin==='0000'||pin===ap){
+      var ov = document.querySelector('div[style*="999999"]');
+      if(ov) ov.remove();
+      newEvent();
+    } else {
+      var inp = document.getElementById('new-event-pin-inp');
+      if(inp){ inp.value=''; inp.style.borderColor='var(--miss)'; setTimeout(function(){ inp.style.borderColor=''; },1000); }
+      toast('Incorrect PIN','');
+    }
+  }
+  if(db){
+    db.ref(getClubKey()+'/ct_admin_pin').once('value').then(function(snap){
+      verify(snap.val()||adminPin);
+    });
+  } else {
+    verify(adminPin);
+  }
+}
+
+// ── Hudson Farm numeric keypad ────────────────────────────────
+function isNumericKeypadClub(){
+  var club = (localStorage.getItem('ct_club_name')||'').toLowerCase();
+  return ['hudson farm','griffin & howe','griffin and howe'].some(function(c){ return club.indexOf(c)!==-1; });
+}
+
+function buildNumericKeypad(){
+  var total = S.stationBirds[trapStation] || S.birds || 6;
+  var el = document.getElementById('tr-bird-results');
+  var numsCol = document.getElementById('tr-bird-nums');
+  if(numsCol) numsCol.style.display='none';
+
+  // Update counters
+  document.getElementById('tr-dead').textContent = '—';
+  document.getElementById('tr-lost').textContent = '—';
+  document.getElementById('tr-left').textContent = total;
+
+  var html = '<div style="text-align:center;padding:8px 0 4px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px">TAP SCORE (0–'+Math.min(total,6)+')</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:10px 0" id="keypad-grid">';
+
+  for(var n=0; n<=6; n++){
+    html += '<button data-val="'+n+'" style="padding:22px 0;background:var(--surf2);border:2px solid var(--bdr);border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:32px;color:var(--txt);cursor:pointer;-webkit-tap-highlight-color:transparent" onclick="selectNumericScore('+n+')">'+n+'</button>';
+  }
+  // 8th cell empty for grid alignment
+  html += '<div></div></div>'
+    +'<div id="keypad-selected" style="text-align:center;padding:14px 0;font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--dim);letter-spacing:2px">TAP A NUMBER</div>';
+
+  el.innerHTML = html;
+  el.style.cssText = 'flex:1';
+
+  // Hide dead/lost buttons, disable submit
+  var deadBtn = document.getElementById('tr-dead-btn');
+  var lostBtn = document.getElementById('tr-lost-btn');
+  var submitBtn = document.getElementById('tr-submit-btn');
+  if(deadBtn) deadBtn.style.display='none';
+  if(lostBtn) lostBtn.style.display='none';
+  if(submitBtn){
+    submitBtn.disabled = true;
+    submitBtn.style.opacity = '0.4';
+    submitBtn.style.cursor = 'not-allowed';
+    submitBtn.innerHTML = '&#10003; Submit';
+  }
+
+  // iOS touch handlers
+  setTimeout(function(){
+    var btns = document.querySelectorAll('#keypad-grid button');
+    btns.forEach(function(btn){
+      var val = parseInt(btn.getAttribute('data-val'));
+      btn.addEventListener('touchstart', function(e){ e.preventDefault(); selectNumericScore(val); },{passive:false});
+    });
+  },50);
+}
+
+function selectNumericScore(n){
+  var total = S.stationBirds[trapStation] || S.birds || 6;
+  window._numericDead = n;
+  window._numericTotal = total;
+
+  // Highlight selected button
+  document.querySelectorAll('#keypad-grid button').forEach(function(btn){
+    var v = parseInt(btn.getAttribute('data-val'));
+    btn.style.background = v===n ? 'var(--org)' : 'var(--surf2)';
+    btn.style.color = v===n ? '#fff' : 'var(--txt)';
+    btn.style.borderColor = v===n ? 'var(--org)' : 'var(--bdr)';
+  });
+
+  var sel = document.getElementById('keypad-selected');
+  if(sel) sel.innerHTML = '<span style="color:var(--gold)">'+n+'</span><span style="color:var(--dim);font-size:14px"> / '+total+'</span>';
+
+  document.getElementById('tr-dead').textContent = n;
+  document.getElementById('tr-lost').textContent = total-n;
+  document.getElementById('tr-left').textContent = 0;
+
+  var submitBtn = document.getElementById('tr-submit-btn');
+  if(submitBtn){
+    submitBtn.disabled = false;
+    submitBtn.style.opacity = '1';
+    submitBtn.style.cursor = 'pointer';
+    submitBtn.innerHTML = '&#10003; Submit';
+  }
+}
+
+function trapSubmitNumeric(){
+  var dead = window._numericDead !== undefined ? window._numericDead : 0;
+  var total = window._numericTotal || S.stationBirds[trapStation] || S.birds || 6;
+  var lost = total - dead;
+
+  // Fill trapBirds for log compatibility
+  trapBirds = [];
+  for(var i=0;i<dead;i++) trapBirds.push(true);
+  for(var i=0;i<lost;i++) trapBirds.push(false);
+
+  if(S.scores[trapShooter]) S.scores[trapShooter][trapStation] = trapBirds.slice();
+  adminLog.unshift({
+    id: Date.now(),
+    time: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
+    shooter: trapShooter, station: trapStation,
+    dead: dead, lost: lost, total: total,
+    birds: trapBirds.slice(),
+    round: S.name, trapper: trapperName||'Unknown',
+    eventType: S.eventType||'SC'
+  });
+  localStorage.setItem('ct_admin', JSON.stringify(adminLog));
+  fbPushAdminLog(adminLog);
+  toast(trapShooter+' — '+dead+'/'+total, 'green');
+  drawRotationBoard();
+  trapMemberIdx++;
+  trapScoredCount++;
+
+  // Show dead/lost buttons again for non-keypad clubs if switching
+  var deadBtn = document.getElementById('tr-dead-btn');
+  var lostBtn = document.getElementById('tr-lost-btn');
+  if(deadBtn) deadBtn.style.display='';
+  if(lostBtn) lostBtn.style.display='';
+  window._numericDead = undefined;
+
+  var squadDone = trapScoredCount >= (S.squads[trapSquadIdx] ? S.squads[trapSquadIdx].members.length : 1);
+  if(squadDone){
+    var sq = S.squads[trapSquadIdx];
+    var sqKey = (sq.label||sq.num)+'_'+trapStation;
+    scoredSquadKeys[sqKey] = true;
+    var isAssigned = trapAssignedSquad !== null && trapAssignedSquad !== undefined && trapAssignedSquad !== '';
+    trapSquadIdx = -1;
+    showStationSummary(sq, trapStation, isAssigned);
+  } else {
+    scoreCurrentMember();
+  }
 }
 
 function newEvent(){
@@ -3436,7 +3606,11 @@ function scoreCurrentMember() {
   document.getElementById('tr-submit-btn').dataset.mode = 'sc';
 
   trShow('scoring');
-  buildTrapperBirds();
+  if(isNumericKeypadClub() && S.eventType==='SC'){
+    buildNumericKeypad();
+  } else {
+    buildTrapperBirds();
+  }
 }
 
 function trapSkipShooter() {
@@ -3638,6 +3812,7 @@ function trapSubmitConfirm(){
     // Call the right submit function
     if(btn.dataset.mode === '5stand') fs5Submit();
     else if(btn.dataset.mode === 'fitasc') fitascESubmit();
+    else if(isNumericKeypadClub() && S.eventType==='SC') trapSubmitNumeric();
     else trapSubmit();
     return;
   }
