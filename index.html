@@ -164,7 +164,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1776813604 -->
+<!-- build:1776814052 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -1812,15 +1812,19 @@ function buildNumericKeypad(){
   document.getElementById('tr-lost').textContent = '—';
   document.getElementById('tr-left').textContent = total;
 
-  var html = '<div style="text-align:center;padding:8px 0 4px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px">TAP SCORE (0–'+Math.min(total,6)+')</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:10px 0" id="keypad-grid">';
-
-  for(var n=0; n<=6; n++){
-    html += '<button data-val="'+n+'" style="padding:22px 0;background:var(--surf2);border:2px solid var(--bdr);border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:32px;color:var(--txt);cursor:pointer;-webkit-tap-highlight-color:transparent" onclick="selectNumericScore('+n+')">'+n+'</button>';
-  }
-  // 8th cell empty for grid alignment
-  html += '<div></div></div>'
-    +'<div id="keypad-selected" style="text-align:center;padding:14px 0;font-family:Bebas Neue,sans-serif;font-size:20px;color:var(--dim);letter-spacing:2px">TAP A NUMBER</div>';
+  var html = '<div style="text-align:center;padding:8px 0 10px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px">TAP SCORE (0 – '+Math.min(total,6)+')</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:0 0 10px 0;width:100%" id="keypad-grid">'
+    +'<button data-val="0" style="padding:24px 0;background:var(--surf2);border:2px solid var(--bdr);border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:38px;color:var(--txt);cursor:pointer;-webkit-tap-highlight-color:transparent;width:100%" onclick="selectNumericScore(0)">0</button>'
+    +'<button data-val="1" style="padding:24px 0;background:var(--surf2);border:2px solid var(--bdr);border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:38px;color:var(--txt);cursor:pointer;-webkit-tap-highlight-color:transparent;width:100%" onclick="selectNumericScore(1)">1</button>'
+    +'<button data-val="2" style="padding:24px 0;background:var(--surf2);border:2px solid var(--bdr);border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:38px;color:var(--txt);cursor:pointer;-webkit-tap-highlight-color:transparent;width:100%" onclick="selectNumericScore(2)">2</button>'
+    +'<button data-val="3" style="padding:24px 0;background:var(--surf2);border:2px solid var(--bdr);border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:38px;color:var(--txt);cursor:pointer;-webkit-tap-highlight-color:transparent;width:100%" onclick="selectNumericScore(3)">3</button>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:0 0 10px 0;width:100%">'
+    +'<button data-val="4" style="padding:24px 0;background:var(--surf2);border:2px solid var(--bdr);border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:38px;color:var(--txt);cursor:pointer;-webkit-tap-highlight-color:transparent;width:100%" onclick="selectNumericScore(4)">4</button>'
+    +'<button data-val="5" style="padding:24px 0;background:var(--surf2);border:2px solid var(--bdr);border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:38px;color:var(--txt);cursor:pointer;-webkit-tap-highlight-color:transparent;width:100%" onclick="selectNumericScore(5)">5</button>'
+    +'<button data-val="6" style="padding:24px 0;background:var(--surf2);border:2px solid var(--bdr);border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:38px;color:var(--txt);cursor:pointer;-webkit-tap-highlight-color:transparent;width:100%" onclick="selectNumericScore(6)">6</button>'
+    +'</div>'
+    +'<div id="keypad-selected" style="text-align:center;padding:14px 0;font-family:Bebas Neue,sans-serif;font-size:22px;color:var(--dim);letter-spacing:2px">TAP A NUMBER</div>';
 
   el.innerHTML = html;
   el.style.cssText = 'flex:1';
@@ -1840,7 +1844,7 @@ function buildNumericKeypad(){
 
   // iOS touch handlers
   setTimeout(function(){
-    var btns = document.querySelectorAll('#keypad-grid button');
+    var btns = document.querySelectorAll('button[data-val]');
     btns.forEach(function(btn){
       var val = parseInt(btn.getAttribute('data-val'));
       btn.addEventListener('touchstart', function(e){ e.preventDefault(); selectNumericScore(val); },{passive:false});
@@ -1854,7 +1858,7 @@ function selectNumericScore(n){
   window._numericTotal = total;
 
   // Highlight selected button
-  document.querySelectorAll('#keypad-grid button').forEach(function(btn){
+  document.querySelectorAll('button[data-val]').forEach(function(btn){
     var v = parseInt(btn.getAttribute('data-val'));
     btn.style.background = v===n ? 'var(--org)' : 'var(--surf2)';
     btn.style.color = v===n ? '#fff' : 'var(--txt)';
