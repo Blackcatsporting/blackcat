@@ -164,7 +164,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1776807740 -->
+<!-- build:1776808754 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -987,6 +987,11 @@ function connectAsTrapper(){
         S.stationBirds = state.stationBirds;
         S.shooters     = state.shooters;
         S.eventType    = state.eventType || 'SC';
+        // Load club name so keypad and squad sheet detection work on trapper device
+        if(state.club){
+          S.club = state.club;
+          localStorage.setItem('ct_club_name', state.club);
+        }
         // Load FITASC setup on trapper device
         if(state.fitascSetup && state.fitascSetup.length){
           fitascSetup = state.fitascSetup;
@@ -2050,7 +2055,7 @@ function startRound(){
   var key = S.name.replace(/[^A-Z0-9]/g,'_').substring(0,40);
   localStorage.setItem('ct_event_key', key);
 
-  fbPushEventState({ started:S.started, name:S.name, stations:S.stations, birds:S.birds, stationBirds:S.stationBirds, shooters:S.shooters, eventType:S.eventType, fitascSetup:fitascSetup, fitascParcours:FITASC_PARCOURS });
+  fbPushEventState({ started:S.started, name:S.name, stations:S.stations, birds:S.birds, stationBirds:S.stationBirds, shooters:S.shooters, eventType:S.eventType, fitascSetup:fitascSetup, fitascParcours:FITASC_PARCOURS, club:S.club });
   fbPushSquads(S.squads);
   // Persist FITASC setup locally so it survives page refresh
   localStorage.setItem('ct_event_type', S.eventType);
@@ -2482,6 +2487,7 @@ function drawTrapperPick() {
               S.started=state.started; S.name=state.name; S.stations=state.stations;
               S.birds=state.birds; S.stationBirds=state.stationBirds; S.shooters=state.shooters;
               S.eventType=state.eventType||'SC';
+              if(state.club){ S.club=state.club; localStorage.setItem('ct_club_name', state.club); }
               db.ref(getKey()+'/ct_squads').once('value').then(function(snap2){
                 var sq=snap2.val();
                 if(sq){ var arr=Array.isArray(sq)?sq:Object.values(sq); localStorage.setItem('ct_squads',JSON.stringify(arr)); S.squads=arr; }
