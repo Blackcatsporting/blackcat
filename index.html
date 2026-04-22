@@ -164,7 +164,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1776814052 -->
+<!-- build:1776818099 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -1805,7 +1805,19 @@ function buildNumericKeypad(){
   var total = S.stationBirds[trapStation] || S.birds || 6;
   var el = document.getElementById('tr-bird-results');
   var numsCol = document.getElementById('tr-bird-nums');
-  if(numsCol) numsCol.style.display='none';
+  // Hide the entire Bird column including its label
+  if(numsCol){
+    var birdContainer = numsCol.parentNode;
+    if(birdContainer) birdContainer.style.display='none';
+  }
+  // Make result column full width
+  if(el){
+    var resultContainer = el.parentNode;
+    if(resultContainer){ resultContainer.style.flex='1'; resultContainer.style.width='100%'; }
+    // Hide Bird/Result labels
+    var lbl = resultContainer ? resultContainer.querySelector('.lbl') : null;
+    if(lbl) lbl.style.display='none';
+  }
 
   // Update counters
   document.getElementById('tr-dead').textContent = '—';
@@ -1908,11 +1920,13 @@ function trapSubmitNumeric(){
   trapMemberIdx++;
   trapScoredCount++;
 
-  // Show dead/lost buttons again for non-keypad clubs if switching
+  // Restore bird/result columns for next scorer
   var deadBtn = document.getElementById('tr-dead-btn');
   var lostBtn = document.getElementById('tr-lost-btn');
   if(deadBtn) deadBtn.style.display='';
   if(lostBtn) lostBtn.style.display='';
+  var numsColR = document.getElementById('tr-bird-nums');
+  if(numsColR && numsColR.parentNode) numsColR.parentNode.style.display='';
   window._numericDead = undefined;
 
   var squadDone = trapScoredCount >= (S.squads[trapSquadIdx] ? S.squads[trapSquadIdx].members.length : 1);
