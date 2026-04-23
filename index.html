@@ -40,6 +40,29 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 .btn-sm{padding:7px 12px;font-size:10px}
 .sq-sheet-btn{display:none !important}
 
+/* ── TRAPPER OUTDOOR BRIGHT THEME ── */
+#pg-trapper{background:#f5f5f0}
+#pg-trapper .card{background:#fff;border-color:#ccc}
+#pg-trapper .ctitle{color:#1a1a0e}
+#pg-trapper .lbl{color:#555}
+#pg-trapper .inp{background:#fff;border-color:#bbb;color:#111}
+#pg-trapper #tr-station-bar{background:#fff;border-color:#d4783a}
+#pg-trapper #tr-station-label{color:#d4783a}
+#pg-trapper #tr-session-bar{background:#fff;border-color:#ccc}
+#pg-trapper #tr-conn-status{background:#eee;color:#555}
+#pg-trapper #tr-arrival-note{color:#d4783a}
+#pg-trapper #tr-squad-label{color:#c8a84b}
+#pg-trapper #tr-progress{color:#d4783a}
+#pg-trapper #tr-name{color:#0a3d6b;text-shadow:none}
+#pg-trapper .lbl{color:#444}
+#pg-trapper #tr-signout-btn{border-color:#ccc}
+#pg-trapper #tr-dead-count,#pg-trapper #tr-lost-count,#pg-trapper #tr-left-count{color:#111}
+#pg-trapper #keypad-selected{color:#888}
+#pg-trapper button[data-val]{background:#e8e8e0;border-color:#bbb;color:#111}
+#pg-trapper button[data-val].selected,#pg-trapper button[data-val][style*="var(--org)"]{background:#d4783a !important;color:#fff !important;border-color:#d4783a !important}
+#pg-trapper #summary-edit-btn{background:#fff;border-color:#c8a84b;color:#8a6520}
+#pg-trapper #summary-next-btn{background:#d4783a;color:#fff}
+
 @media (orientation:landscape) and (min-width:900px){
   #app-wrap{max-width:100%;width:100%}
 
@@ -164,7 +187,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1776818099 -->
+<!-- build:1776984768 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -2696,9 +2719,10 @@ function buildSquadList() {
 
     var btn = document.createElement('button');
     btn.type = 'button';
+    var isOutdoor = isNumericKeypadClub();
     btn.style.cssText = isComplete
-      ? 'display:block;width:100%;text-align:left;background:#0a1f0a;border:3px solid var(--hit);border-radius:10px;padding:18px 20px;margin-bottom:14px;opacity:0.7;cursor:default'
-      : 'display:block;width:100%;text-align:left;background:var(--surf);border:3px solid var(--gold);border-radius:10px;padding:18px 20px;margin-bottom:14px;cursor:pointer';
+      ? 'display:block;width:100%;text-align:left;background:'+(isOutdoor?'#d4edda':'#0a1f0a')+';border:3px solid var(--hit);border-radius:10px;padding:18px 20px;margin-bottom:14px;opacity:0.7;cursor:default'
+      : 'display:block;width:100%;text-align:left;background:'+(isOutdoor?'#fff':'var(--surf)')+';border:3px solid var(--gold);border-radius:10px;padding:18px 20px;margin-bottom:14px;cursor:pointer';
 
     var lbl = document.createElement('div');
     lbl.style.cssText = 'font-family:Bebas Neue,sans-serif;font-size:26px;letter-spacing:3px;color:'+(isComplete?'var(--hit)':'var(--gold)')+';margin-bottom:8px';
@@ -2707,7 +2731,7 @@ function buildSquadList() {
     var names = document.createElement('div');
     sq.members.forEach(function(m, mi){
       var row = document.createElement('div');
-      row.style.cssText = 'font-size:20px;font-weight:600;color:var(--txt);padding:4px 0;border-bottom:1px solid var(--bdr)';
+      row.style.cssText = 'font-size:20px;font-weight:600;color:'+(isOutdoor?'#111':'var(--txt)')+';padding:4px 0;border-bottom:1px solid '+(isOutdoor?'#ddd':'var(--bdr)');
       row.textContent = (mi+1) + '.  ' + m;
       names.appendChild(row);
     });
