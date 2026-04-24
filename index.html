@@ -187,7 +187,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1777039918 -->
+<!-- build:1777042175 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -5953,18 +5953,51 @@ setInterval(function(){
         };
         firebase.initializeApp(firebaseConfig);
         db = firebase.database();
+        // Monitor connection and flush any queued offline writes on reconnect
+        db.ref('.info/connected').on('value', function(snap){
+          if(snap.val() === true){ setTimeout(flushOfflineQueue, 500); }
+        });
       } catch(e) {  }
     }
     initFirebase();
 
+    // Flush offline queue when coming back online
+    window.addEventListener('online', function(){
+      if(db){ try{ firebase.database().goOnline(); setTimeout(flushOfflineQueue, 1000); }catch(e){} }
+    });
+
 
     function getKey(){ return localStorage.getItem('ct_event_key')||'DEFAULT'; }
+
+    var _offlineQueue = JSON.parse(localStorage.getItem('ct_offline_queue')||'[]');
+
+    function flushOfflineQueue(){
+      if(!db || !_offlineQueue.length) return;
+      var toFlush = _offlineQueue.slice();
+      _offlineQueue = [];
+      localStorage.setItem('ct_offline_queue', '[]');
+      toFlush.forEach(function(record){
+        db.ref(record.key).push(record.data).catch(function(){
+          _offlineQueue.push(record);
+          localStorage.setItem('ct_offline_queue', JSON.stringify(_offlineQueue));
+        });
+      });
+    }
+
+    window.addEventListener('online', function(){
+      if(db){ try{ firebase.database().goOnline(); setTimeout(flushOfflineQueue, 1000); }catch(e){} }
+    });
 
     function fbPushAdminLog(log){
       if(!db) return;
       var record = log[0];
       if(!record) return;
-      db.ref(getKey()+'/ct_admin').push(record).catch(function(e){});
+      var key = getKey()+'/ct_admin';
+      db.ref(key).push(record).catch(function(){
+        // Offline — queue for retry
+        _offlineQueue.push({key: key, data: record});
+        localStorage.setItem('ct_offline_queue', JSON.stringify(_offlineQueue));
+      });
     }
     function fbPushActiveSession(sess){
       if(!db) return;
