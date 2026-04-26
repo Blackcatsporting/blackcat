@@ -53,7 +53,8 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 #pg-trapper #tr-arrival-note{color:#d4783a}
 #pg-trapper #tr-squad-label{color:#c8a84b}
 #pg-trapper #tr-progress{color:#d4783a}
-#pg-trapper #tr-name{color:#0a3d6b !important;text-shadow:none !important}
+#pg-trapper #tr-name{color:#00ccff !important;text-shadow:0 0 20px rgba(0,204,255,0.4) !important}
+#pg-trapper #tr-now-shooting-box{background:#0a0a2e !important;border-color:#00aaff !important}
 #pg-trapper .lbl{color:#444}
 #pg-trapper #tr-signout-btn{border-color:#ccc}
 #pg-trapper #tr-dead-count,#pg-trapper #tr-lost-count,#pg-trapper #tr-left-count{color:#111}
@@ -187,7 +188,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1777232153 -->
+<!-- build:1777234396 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -446,7 +447,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
       <button id="tr-menu-btn-scoring" onclick="showTrapperMenu()" style="background:none;border:1px solid var(--bdr);border-radius:6px;color:var(--dim);font-family:DM Mono,monospace;font-size:18px;padding:8px 12px;cursor:pointer;flex-shrink:0">☰</button>
     </div>
     <!-- NOW SHOOTING -->
-    <div style="background:#0a0a2e;border:3px solid #00aaff;border-radius:14px;padding:28px 20px;text-align:center;margin-bottom:16px">
+    <div style="background:#0a0a2e;border:3px solid #00aaff;border-radius:14px;padding:28px 20px;text-align:center;margin-bottom:16px" id="tr-now-shooting-box">
       <div style="font-size:11px;font-family:'DM Mono',monospace;color:#00aaff;letter-spacing:5px;text-transform:uppercase;margin-bottom:14px">&#9658; NOW SHOOTING</div>
       <div id="tr-name" style="font-family:'Bebas Neue',sans-serif;font-size:56px;letter-spacing:3px;color:#00ccff;line-height:1;margin-bottom:4px;word-break:break-word;text-shadow:0 0 20px rgba(0,204,255,0.4)"></div>
     </div>
@@ -3557,6 +3558,10 @@ function showStationSummary(squad, station, isAssigned){
       html += '<button id="summary-next-btn" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; MOVE TO STATION '+(nextSt+1)+'</button>';
     }
   } else {
+    html += '<div style="text-align:center;padding:10px 0 14px">'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:4px">&#10003; ALL DONE WITH SQUAD '+squadLabel+'</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px">Scores recorded — next squad loading</div>'
+      +'</div>';
     html += '<button id="summary-next-btn" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; NEXT SQUAD</button>';
   }
 
