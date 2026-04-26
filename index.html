@@ -188,7 +188,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1777234396 -->
+<!-- build:1777237078 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -1803,6 +1803,7 @@ function showTrapperMenu(){
     +'<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px;margin-bottom:20px">Emergency options only</div>';
 
   if(onScoring){
+    html += '<button id="tm-order" style="display:block;width:100%;padding:14px;background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;color:var(--txt);font-family:DM Mono,monospace;font-size:12px;letter-spacing:1px;cursor:pointer;margin-bottom:10px;text-align:left">📋 &nbsp; SET SHOOTING ORDER</button>';
     html += '<button id="tm-skip" style="display:block;width:100%;padding:14px;background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;color:var(--txt);font-family:DM Mono,monospace;font-size:12px;letter-spacing:1px;cursor:pointer;margin-bottom:10px;text-align:left">⏭ &nbsp; SKIP CURRENT SHOOTER</button>';
     html += '<button id="tm-sub" style="display:block;width:100%;padding:14px;background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;color:var(--txt);font-family:DM Mono,monospace;font-size:12px;letter-spacing:1px;cursor:pointer;margin-bottom:10px;text-align:left">🔄 &nbsp; SUBSTITUTE SHOOTER</button>';
     html += '<button id="tm-edit" style="display:block;width:100%;padding:14px;background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;color:var(--txt);font-family:DM Mono,monospace;font-size:12px;letter-spacing:1px;cursor:pointer;margin-bottom:10px;text-align:left">✏️ &nbsp; EDIT / ADD SHOOTER NAME</button>';
@@ -1816,6 +1817,29 @@ function showTrapperMenu(){
   document.body.appendChild(overlay);
 
   function close(){ overlay.remove(); }
+
+  var orderBtn = document.getElementById('tm-order');
+  if(orderBtn){
+    function doSetOrder(){
+      close();
+      var squads = S.squads.length ? S.squads : JSON.parse(localStorage.getItem('ct_squads')||'[]');
+      var sq = trapSquadIdx >= 0 ? squads[trapSquadIdx] : null;
+      if(!sq) return;
+      showOrderScreen(
+        sq.members,
+        'SQUAD ' + (sq.label||sq.num),
+        'CHANGE SHOOTING ORDER',
+        function(orderedMembers){
+          sq.members = orderedMembers;
+          trapMemberIdx = 0;
+          trapScoredCount = 0;
+          scoreCurrentMember();
+        }
+      );
+    }
+    orderBtn.onclick = doSetOrder;
+    orderBtn.addEventListener('touchstart',function(e){e.preventDefault();doSetOrder();},{passive:false});
+  }
 
   var closeBtn = document.getElementById('tm-close');
   if(closeBtn){ closeBtn.onclick = close; closeBtn.addEventListener('touchstart',function(e){e.preventDefault();close();},{passive:false}); }
@@ -3434,19 +3458,18 @@ function startScoringSquad(squadIdx, keepStation) {
 
   updateStationStatus(trapStation+1, squad.label||squad.num, squad.members, 'waiting');
 
-  // Only show order screen on first station — after that rotation is set
-  var squadKey = String(squad.label||squad.num);
-  if(!window._squadOrderSet) window._squadOrderSet = {};
-
-  if(!window._squadOrderSet[squadKey]){
-    // First time — show order screen
+  // Only show order screen on very first squad of this trapper's session
+  if(!window._trapperOrderDone){
+    // First squad ever — show order screen
     showOrderScreen(
       squad.members,
       'SQUAD ' + (squad.label||squad.num),
       stationLabelShort() + ' ' + (trapStation+1) + ' — SET SHOOTING ORDER',
       function(orderedMembers){
         squad.members = orderedMembers;
-        window._squadOrderSet[squadKey] = true;
+        window._trapperOrderDone = true;
+        if(!window._squadOrderSet) window._squadOrderSet = {};
+        window._squadOrderSet[String(squad.label||squad.num)] = true;
         trapMemberIdx = 0;
         trapScoredCount = 0;
         updateStationStatus(trapStation+1, squad.label||squad.num, orderedMembers, 'scoring');
