@@ -188,7 +188,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1777237078 -->
+<!-- build:1777241447 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -2679,6 +2679,48 @@ function drawTrapperPick() {
 }
 
 // Build squad list grouped by session, in arrival order for this station
+function getNextRotationSquad(currentSquad){
+  var squads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
+  if(!squads.length) squads = S.squads;
+
+  var currentLabel = String(currentSquad.label||currentSquad.num);
+  // Strip A/B suffix to get base number
+  var baseMatch = currentLabel.match(/^(\d+)([AB]?)$/i);
+  if(!baseMatch) return null;
+  var baseNum = parseInt(baseMatch[1]);
+  var suffix = baseMatch[2].toUpperCase();
+
+  // If current is A, next is B of same number
+  if(suffix === 'A'){
+    var bSquad = squads.find(function(sq){
+      return String(sq.label||sq.num).toUpperCase() === baseNum+'B';
+    });
+    if(bSquad){
+      var bKey = (bSquad.label||bSquad.num)+'_'+trapStation;
+      if(!scoredSquadKeys[bKey]) return bSquad;
+    }
+  }
+
+  // Next base number is current - 1, wrap around
+  var totalSquads = squads.length;
+  var nextNum = baseNum - 1;
+  if(nextNum < 1) nextNum = totalSquads;
+
+  // Try nextNum A first, then nextNum, then nextNum B
+  var candidates = [nextNum+'A', String(nextNum), nextNum+'B'];
+  for(var i=0; i<candidates.length; i++){
+    var candidate = candidates[i];
+    var sq = squads.find(function(s){
+      return String(s.label||s.num).toUpperCase() === candidate.toUpperCase();
+    });
+    if(sq){
+      var sqKey = (sq.label||sq.num)+'_'+trapStation;
+      if(!scoredSquadKeys[sqKey]) return sq;
+    }
+  }
+  return null;
+}
+
 function buildSquadList() {
   var el = document.getElementById('tr-squad-list');
   el.innerHTML = '';
@@ -2843,6 +2885,31 @@ function buildSquadList() {
     if(!isComplete) btn.onclick = (function(i){ return function(){ startScoringSquad(i); }; })(realIdx);
     el.appendChild(btn);
   });
+}
+
+function advanceRotation(currentSquad){
+  var nextSquad = getNextRotationSquad(currentSquad);
+  if(nextSquad){
+    // Auto-start next squad in rotation
+    var squads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
+    if(!squads.length) squads = S.squads;
+    trapSquadIdx = squads.findIndex(function(sq){
+      return String(sq.label||sq.num) === String(nextSquad.label||nextSquad.num);
+    });
+    if(trapSquadIdx < 0) trapSquadIdx = 0;
+    trapScoredCount = 0;
+    trapMemberIdx = 0;
+    startScoringSquad(trapSquadIdx);
+  } else {
+    // All squads done at this station
+    trShow('squads');
+    var el = document.getElementById('tr-squad-list');
+    if(el) el.innerHTML = '<div style="text-align:center;padding:40px 20px">'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:32px;color:var(--hit);letter-spacing:3px;margin-bottom:10px">&#10003; ALL SQUADS COMPLETE</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);letter-spacing:2px;margin-bottom:30px">Station '+(trapStation+1)+' — all squads scored</div>'
+      +'<button onclick="switchToTrapper()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#8617; SIGN OUT</button>'
+      +'</div>';
+  }
 }
 
 function moveToNextStation(){
@@ -3607,11 +3674,11 @@ function showStationSummary(squad, station, isAssigned){
     if(nextBtn){
       nextBtn.addEventListener('click', function(){
         if(isAssigned){ moveToNextStation(); }
-        else { buildSquadList(); }
+        else { advanceRotation(squad); }
       });
       nextBtn.addEventListener('touchstart', function(e){ e.preventDefault();
         if(isAssigned){ moveToNextStation(); }
-        else { buildSquadList(); }
+        else { advanceRotation(squad); }
       },{passive:false});
     }
   }, 50);
