@@ -187,7 +187,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1777205488 -->
+<!-- build:1777232153 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -1843,6 +1843,18 @@ document.addEventListener('DOMContentLoaded', function(){
   });
 });
 
+// ── Swipe back protection ─────────────────────────────────────
+function trapperPushState(){
+  history.pushState({trapper:true}, '', window.location.href);
+}
+window.addEventListener('popstate', function(e){
+  var onTrapper = document.getElementById('pg-trapper') && document.getElementById('pg-trapper').classList.contains('on');
+  if(onTrapper){
+    // Push state again to prevent going back
+    history.pushState({trapper:true}, '', window.location.href);
+  }
+});
+
 function confirmNewEvent(){
   var overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:999999;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box';
@@ -2638,6 +2650,7 @@ function drawTrapperPick() {
   if(trapHdr) trapHdr.textContent = trapperName ? '' + trapperName : 'Trapper';
   trShow('squads');
   buildSquadList();
+  trapperPushState();
 }
 
 // Build squad list grouped by session, in arrival order for this station
