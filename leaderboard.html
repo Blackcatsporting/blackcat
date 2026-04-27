@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>BLACK CAT — Live Leaderboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a06;
+    --surf: #141410;
+    --surf2: #1c1c14;
+    --bdr: #2a2a1a;
+    --txt: #f0f0e0;
+    --dim: #888870;
+    --gold: #c8a84b;
+    --org: #d4691e;
+    --hit: #4caf50;
+    --miss: #e53935;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--txt); font-family: 'DM Sans', sans-serif; min-height: 100vh; }
+
+  /* Setup screen */
+  #setup-screen {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 40px 20px;
+  }
+  .setup-box {
+    background: var(--surf); border: 2px solid var(--gold);
+    border-radius: 16px; padding: 40px; width: 100%; max-width: 420px; text-align: center;
+  }
+  .setup-logo { font-family: 'Bebas Neue', sans-serif; font-size: 48px; color: var(--gold); letter-spacing: 4px; margin-bottom: 4px; }
+  .setup-sub { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--dim); letter-spacing: 3px; margin-bottom: 30px; }
+  .setup-label { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--dim); letter-spacing: 2px; text-align: left; margin-bottom: 8px; text-transform: uppercase; }
+  .setup-input {
+    width: 100%; background: var(--surf2); border: 2px solid var(--bdr);
+    border-radius: 8px; padding: 14px 16px; font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px; letter-spacing: 3px; color: var(--txt); outline: none;
+    margin-bottom: 20px; text-transform: uppercase;
+  }
+  .setup-input:focus { border-color: var(--gold); }
+  .setup-btn {
+    display: block; width: 100%; padding: 18px;
+    background: var(--gold); border: none; border-radius: 10px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 3px;
+    color: #0a0a06; cursor: pointer;
+  }
+  .setup-btn:hover { background: #d4b55a; }
+  .setup-note { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--dim); margin-top: 16px; letter-spacing: 1px; }
+
+  /* Board screen */
+  #board-screen { display: none; }
+
+  .board-header {
+    background: var(--surf); border-bottom: 2px solid var(--gold);
+    padding: 16px 32px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .board-logo { font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: var(--gold); letter-spacing: 3px; }
+  .board-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--txt); letter-spacing: 2px; text-align: center; flex: 1; }
+  .board-time { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--dim); letter-spacing: 1px; text-align: right; }
+  .live-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--hit); margin-right: 6px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .board-body { padding: 24px 32px; }
+
+  /* Leaderboard table */
+  .leader-table { width: 100%; border-collapse: collapse; }
+  .leader-table th {
+    font-family: 'DM Mono', monospace; font-size: 12px; color: var(--dim);
+    letter-spacing: 2px; text-transform: uppercase; padding: 10px 16px;
+    border-bottom: 2px solid var(--bdr); text-align: left;
+  }
+  .leader-table th.right { text-align: right; }
+  .leader-table td { padding: 14px 16px; border-bottom: 1px solid var(--bdr); }
+  .leader-table tr:hover td { background: var(--surf2); }
+
+  .rank { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--dim); width: 50px; }
+  .rank.gold { color: #ffd700; }
+  .rank.silver { color: #c0c0c0; }
+  .rank.bronze { color: #cd7f32; }
+  .shooter-name { font-size: 22px; font-weight: 700; color: var(--txt); }
+  .shooter-class { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--dim); letter-spacing: 1px; margin-top: 2px; }
+  .score-total { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: var(--gold); text-align: right; }
+  .score-pct { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--dim); text-align: right; }
+
+  /* Category tabs */
+  .cat-tabs { display: flex; gap: 12px; margin-bottom: 20px; }
+  .cat-tab {
+    padding: 8px 20px; border-radius: 6px; border: 1px solid var(--bdr);
+    font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 2px;
+    color: var(--dim); cursor: pointer; background: none;
+  }
+  .cat-tab.active { background: var(--gold); color: #0a0a06; border-color: var(--gold); font-weight: 600; }
+
+  /* Station status bar */
+  .station-bar {
+    display: flex; gap: 8px; margin-bottom: 24px;
+    overflow-x: auto; padding-bottom: 4px; scrollbar-width: none;
+  }
+  .station-pill {
+    flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .station-pill.waiting { background: var(--surf2); color: var(--dim); border: 1px solid var(--bdr); }
+  .station-pill.scoring { background: #1a2a0a; color: var(--hit); border: 1px solid var(--hit); }
+  .station-pill.complete { background: #0a1a0a; color: var(--hit); border: 1px solid var(--hit); opacity: 0.6; }
+
+  /* No data */
+  .no-data { text-align: center; padding: 80px 20px; }
+  .no-data-icon { font-size: 60px; margin-bottom: 16px; }
+  .no-data-txt { font-family: 'DM Mono', monospace; font-size: 14px; color: var(--dim); letter-spacing: 2px; }
+
+  /* Refresh indicator */
+  .refresh-note { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--dim); letter-spacing: 1px; text-align: center; padding: 16px; }
+
+  /* Fullscreen button */
+  .fs-btn {
+    background: none; border: 1px solid var(--bdr); border-radius: 6px;
+    color: var(--dim); font-family: 'DM Mono', monospace; font-size: 11px;
+    padding: 6px 12px; cursor: pointer; letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setup-screen">
+  <div class="setup-box">
+    <div class="setup-logo">BLACK CAT</div>
+    <div class="setup-sub">LIVE LEADERBOARD</div>
+    <div class="setup-label">Club Name</div>
+    <input id="inp-club" class="setup-input" type="text" placeholder="HUDSON FARM" autocomplete="off">
+    <div class="setup-label">Event Name</div>
+    <input id="inp-event" class="setup-input" type="text" placeholder="SEMPER FI 2025" autocomplete="off">
+    <button class="setup-btn" onclick="connectBoard()">▶ CONNECT</button>
+    <div class="setup-note">Enter the same club and event name used at setup.<br>This screen is read-only — no scoring access.</div>
+  </div>
+</div>
+
+<!-- BOARD SCREEN -->
+<div id="board-screen">
+  <div class="board-header">
+    <div class="board-logo">BLACK CAT</div>
+    <div class="board-title" id="board-title">LIVE LEADERBOARD</div>
+    <div style="text-align:right">
+      <div class="board-time"><span class="live-dot"></span><span id="board-time">--:--</span></div>
+      <button class="fs-btn" onclick="toggleFullscreen()" style="margin-top:6px">⛶ FULLSCREEN</button>
+    </div>
+  </div>
+
+  <div class="board-body">
+    <!-- Category tabs -->
+    <div class="cat-tabs" id="cat-tabs">
+      <button class="cat-tab active" onclick="setCategory('all')">ALL</button>
+      <button class="cat-tab" onclick="setCategory('open')">OPEN</button>
+      <button class="cat-tab" onclick="setCategory('women')">WOMEN</button>
+      <button class="cat-tab" onclick="setCategory('senior')">SENIOR</button>
+      <button class="cat-tab" onclick="setCategory('youth')">YOUTH</button>
+    </div>
+
+    <!-- Station status -->
+    <div class="station-bar" id="station-bar"></div>
+
+    <!-- Leaderboard -->
+    <div id="leader-body"></div>
+
+    <div class="refresh-note" id="refresh-note">● LIVE — updates automatically</div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+  var db = null;
+  var currentCategory = 'all';
+  var allScores = [];
+  var stationStatuses = {};
+  var totalStations = 0;
+  var eventName = '';
+  var clubName = '';
+
+  // Connect to Firebase
+  function connectBoard(){
+    var club = document.getElementById('inp-club').value.trim().toUpperCase();
+    var event = document.getElementById('inp-event').value.trim().toUpperCase();
+    if(!club || !event){ alert('Please enter both club name and event name'); return; }
+
+    clubName = club;
+    eventName = event;
+
+    var firebaseConfig = {
+      apiKey: "AIzaSyBZkp2x4ZEqpBKgP-kIJ8LVQ6FptRBz-Y",
+      authDomain: "black-cat-4a424.firebaseapp.com",
+      databaseURL: "https://black-cat-4a424-default-rtdb.firebaseio.com",
+      projectId: "black-cat-4a424",
+      storageBucket: "black-cat-4a424.appspot.com",
+      messagingSenderId: "179649653199",
+      appId: "1:179649653199:web:6c2fcf5a731971df8dcaba"
+    };
+
+    try {
+      if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+      db = firebase.database();
+    } catch(e) { alert('Firebase connection failed'); return; }
+
+    // Build event key same way the app does — event name only
+    var eventKey = event.replace(/[^A-Z0-9]/g,'_').substring(0,40);
+
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('board-screen').style.display = 'block';
+    document.getElementById('board-title').textContent = club + ' — ' + event;
+
+    // Listen to admin log
+    db.ref(eventKey + '/ct_admin').on('value', function(snap){
+      var val = snap.val();
+      if(val){
+        allScores = Array.isArray(val) ? val : Object.values(val);
+      } else {
+        allScores = [];
+      }
+      renderLeader();
+    });
+
+    // Listen to event state for station count
+    db.ref(eventKey + '/ct_event_state').on('value', function(snap){
+      var val = snap.val();
+      if(val && val.stations) totalStations = val.stations;
+    });
+
+    // Listen to station statuses
+    db.ref(eventKey + '/ct_station_status').on('value', function(snap){
+      var val = snap.val();
+      if(val) stationStatuses = val;
+      else stationStatuses = {};
+      renderStationBar();
+    });
+
+    // Clock
+    updateClock();
+    setInterval(updateClock, 1000);
+  }
+
+  function updateClock(){
+    var now = new Date();
+    var h = now.getHours();
+    var m = String(now.getMinutes()).padStart(2,'0');
+    var ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    document.getElementById('board-time').textContent = h + ':' + m + ' ' + ampm;
+  }
+
+  function setCategory(cat){
+    currentCategory = cat;
+    document.querySelectorAll('.cat-tab').forEach(function(t){
+      t.classList.toggle('active', t.textContent.toLowerCase() === cat || (cat==='all' && t.textContent==='ALL'));
+    });
+    renderLeader();
+  }
+
+  function renderStationBar(){
+    var bar = document.getElementById('station-bar');
+    if(!totalStations){ bar.innerHTML = ''; return; }
+    var html = '';
+    for(var i=0; i<totalStations; i++){
+      var st = stationStatuses['station_'+(i+1)] || {status:'waiting'};
+      var cls = st.status === 'scoring' ? 'scoring' : st.status === 'complete' ? 'complete' : 'waiting';
+      var icon = cls==='scoring' ? '● ' : cls==='complete' ? '✓ ' : '';
+      html += '<div class="station-pill '+cls+'">'+icon+'STA '+(i+1)+'</div>';
+    }
+    bar.innerHTML = html;
+  }
+
+  function renderLeader(){
+    var body = document.getElementById('leader-body');
+    if(!allScores.length){
+      body.innerHTML = '<div class="no-data"><div class="no-data-icon">🎯</div><div class="no-data-txt">WAITING FOR SCORES...</div></div>';
+      return;
+    }
+
+    // Aggregate scores per shooter
+    var shooterTotals = {};
+    allScores.forEach(function(r){
+      if(!r || !r.shooter) return;
+      if(!shooterTotals[r.shooter]){
+        shooterTotals[r.shooter] = { dead: 0, total: 0, stations: {} };
+      }
+      if(!shooterTotals[r.shooter].stations[r.station]){
+        shooterTotals[r.shooter].dead += (r.dead||0);
+        shooterTotals[r.shooter].total += (r.total||0);
+        shooterTotals[r.shooter].stations[r.station] = true;
+      }
+    });
+
+    // Sort by dead descending
+    var sorted = Object.keys(shooterTotals).map(function(name){
+      return { name: name, dead: shooterTotals[name].dead, total: shooterTotals[name].total };
+    }).sort(function(a,b){ return b.dead - a.dead; });
+
+    if(!sorted.length){
+      body.innerHTML = '<div class="no-data"><div class="no-data-icon">🎯</div><div class="no-data-txt">WAITING FOR SCORES...</div></div>';
+      return;
+    }
+
+    var html = '<table class="leader-table">'
+      +'<thead><tr>'
+      +'<th style="width:50px">#</th>'
+      +'<th>SHOOTER</th>'
+      +'<th class="right">SCORE</th>'
+      +'<th class="right">%</th>'
+      +'</tr></thead><tbody>';
+
+    sorted.forEach(function(s, i){
+      var rankClass = i===0?'gold':i===1?'silver':i===2?'bronze':'';
+      var pct = s.total > 0 ? Math.round((s.dead/s.total)*100) : 0;
+      html += '<tr>'
+        +'<td class="rank '+rankClass+'">'+(i+1)+'</td>'
+        +'<td><div class="shooter-name">'+s.name+'</div></td>'
+        +'<td class="score-total">'+s.dead+'<span style="font-size:20px;color:var(--dim)">/'+s.total+'</span></td>'
+        +'<td class="score-pct">'+pct+'%</td>'
+        +'</tr>';
+    });
+
+    html += '</tbody></table>';
+    body.innerHTML = html;
+  }
+
+  function toggleFullscreen(){
+    if(!document.fullscreenElement){
+      document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  }
+
+  // Enter key on inputs
+  document.addEventListener('DOMContentLoaded', function(){
+    document.getElementById('inp-event').addEventListener('keydown', function(e){
+      if(e.key==='Enter') connectBoard();
+    });
+  });
+</script>
+</body>
+</html>
