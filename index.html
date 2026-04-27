@@ -188,7 +188,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1777291177 -->
+<!-- build:1777292957 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -415,7 +415,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
       <div id="tr-arrival-note" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--org);letter-spacing:1px;text-transform:uppercase"></div>
       <div style="display:flex;align-items:center;gap:8px">
         <div id="tr-conn-status" style="font-family:DM Mono,monospace;font-size:10px;letter-spacing:1px;padding:4px 10px;border-radius:20px;background:var(--surf2);color:var(--dim)">● CONNECTING</div>
-        <button id="tr-menu-btn-squads" style="background:none;border:1px solid var(--bdr);border-radius:6px;color:var(--dim);font-family:DM Mono,monospace;font-size:14px;padding:6px 10px;cursor:pointer">☰</button>
+        <div id="tr-menu-btn-squads" ontouchstart="event.preventDefault();showTrapperMenu();" onclick="showTrapperMenu();" style="border:1px solid var(--bdr);border-radius:6px;color:var(--dim);font-family:DM Mono,monospace;font-size:14px;padding:6px 10px;cursor:pointer;user-select:none;-webkit-user-select:none;display:inline-block">☰</div>
       </div>
     </div>
     <!-- Station bar -->
@@ -444,7 +444,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
         <div id="tr-squad-label" style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gold);letter-spacing:2px"></div>
         <div id="tr-progress" style="font-family:'DM Mono',monospace;font-size:13px;color:var(--org)"></div>
       </div>
-      <button id="tr-menu-btn-scoring" style="background:none;border:1px solid var(--bdr);border-radius:6px;color:var(--dim);font-family:DM Mono,monospace;font-size:18px;padding:8px 12px;cursor:pointer;flex-shrink:0">☰</button>
+      <div id="tr-menu-btn-scoring" ontouchstart="event.preventDefault();showTrapperMenu();" onclick="showTrapperMenu();" style="border:1px solid var(--bdr);border-radius:6px;color:var(--dim);font-family:DM Mono,monospace;font-size:18px;padding:8px 12px;cursor:pointer;user-select:none;-webkit-user-select:none;display:inline-block;flex-shrink:0">☰</div>
     </div>
     <!-- NOW SHOOTING -->
     <div style="background:#0a0a2e;border:3px solid #00aaff;border-radius:14px;padding:28px 20px;text-align:center;margin-bottom:16px" id="tr-now-shooting-box">
@@ -1864,12 +1864,9 @@ function showTrapperMenu(){
 function wireTrapperMenuButtons(){
   ['tr-menu-btn-squads','tr-menu-btn-scoring'].forEach(function(id){
     var btn = document.getElementById(id);
-    if(btn){
-      // Clone to remove any old listeners
-      var newBtn = btn.cloneNode(true);
-      btn.parentNode.replaceChild(newBtn, btn);
-      newBtn.addEventListener('click', function(e){ e.preventDefault(); showTrapperMenu(); });
-      newBtn.addEventListener('touchstart', function(e){ e.preventDefault(); showTrapperMenu(); },{passive:false});
+    if(btn && !btn._menuWired){
+      btn._menuWired = true;
+      btn.addEventListener('touchstart', function(e){ e.preventDefault(); showTrapperMenu(); },{passive:false});
     }
   });
 }
