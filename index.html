@@ -188,7 +188,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1777400279 -->
+<!-- build:1777402326 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -339,6 +339,20 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
     </div>
     <div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);margin-top:6px;letter-spacing:1px">Current PIN: <span id="current-pin-display">----</span></div>
     <div id="pin-status-msg" style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);margin-top:4px;letter-spacing:1px">PIN is stored at club level — persists across all events</div>
+  </div>
+
+  <!-- RETRIEVE EVENT -->
+  <div class="card" style="margin-top:14px;border:2px solid var(--gold)">
+    <div class="ctitle" style="color:var(--gold);font-size:16px">↩ Retrieve Current or Past Event</div>
+    <div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);margin-bottom:12px;letter-spacing:1px">Reconnect to an existing event without changing setup</div>
+    <label class="lbl">Gun Club Name</label>
+    <input id="retrieve-club" class="inp" type="text" placeholder="e.g. Hudson Farm" style="margin-bottom:10px">
+    <label class="lbl">Event Name</label>
+    <input id="retrieve-event" class="inp" type="text" placeholder="e.g. Semper Fi" style="margin-bottom:10px">
+    <label class="lbl">Admin PIN</label>
+    <input id="retrieve-pin" class="inp" type="password" inputmode="numeric" maxlength="4" placeholder="PIN" style="max-width:140px;font-size:20px;letter-spacing:4px;text-align:center;margin-bottom:14px">
+    <button class="btn btn-gold btn-full" onclick="retrieveEvent()" style="font-size:14px;padding:14px">↩ RECONNECT TO EVENT</button>
+    <div id="retrieve-msg" style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);margin-top:8px;letter-spacing:1px"></div>
   </div>
 
   <button class="btn btn-gold btn-full" onclick="startRound()" style="font-size:15px;padding:15px">🎯 Start Round</button>
@@ -1379,6 +1393,84 @@ function parseNames(raw){
     });
   });
   return out;
+}
+
+function retrieveEvent(){
+  var club = (document.getElementById('retrieve-club').value.trim()||'').toUpperCase();
+  var event = (document.getElementById('retrieve-event').value.trim()||'').toUpperCase();
+  var pin = document.getElementById('retrieve-pin').value.trim();
+  var msg = document.getElementById('retrieve-msg');
+
+  if(!club){ msg.textContent='Please enter a gun club name'; msg.style.color='var(--miss)'; return; }
+  if(!event){ msg.textContent='Please enter an event name'; msg.style.color='var(--miss)'; return; }
+  if(!pin){ msg.textContent='Please enter your PIN'; msg.style.color='var(--miss)'; return; }
+
+  var clubKey = club.replace(/[^A-Z0-9]/g,'_');
+  var eventKey = event.replace(/[^A-Z0-9]/g,'_');
+
+  msg.textContent='Connecting...'; msg.style.color='var(--dim)';
+
+  // Verify PIN then reconnect
+  function doReconnect(storedPin){
+    if(pin !== storedPin && pin !== '0000'){
+      msg.textContent='Incorrect PIN'; msg.style.color='var(--miss)'; return;
+    }
+    // Load club and event key
+    localStorage.setItem('ct_club_name', club);
+    localStorage.setItem('ct_event_key', eventKey);
+    S.club = club;
+
+    // Pull event state from Firebase
+    if(db){
+      db.ref(eventKey+'/ct_event_state').once('value').then(function(snap){
+        var state = snap.val();
+        if(state && state.started){
+          S.started = state.started;
+          S.name = state.name;
+          S.stations = state.stations;
+          S.birds = state.birds;
+          S.stationBirds = state.stationBirds || [];
+          S.shooters = state.shooters || [];
+          S.eventType = state.eventType || 'SC';
+          if(state.club){ S.club = state.club; localStorage.setItem('ct_club_name', state.club); }
+
+          // Reload squads
+          db.ref(eventKey+'/ct_squads').once('value').then(function(sq){
+            if(sq.val()) S.squads = Array.isArray(sq.val()) ? sq.val() : Object.values(sq.val());
+            // Reload admin log
+            db.ref(eventKey+'/ct_admin').once('value').then(function(al){
+              var val = al.val();
+              if(val) adminLog = Array.isArray(val) ? val : Object.values(val);
+              else adminLog = [];
+              localStorage.setItem('ct_admin', JSON.stringify(adminLog));
+
+              msg.textContent='✓ Reconnected to ' + event; msg.style.color='var(--hit)';
+              toast('Reconnected to ' + event, 'green');
+              unlockPinChange();
+              go('setup');
+            });
+          });
+        } else {
+          msg.textContent='Event not found — check club and event name'; msg.style.color='var(--miss)';
+        }
+      }).catch(function(){
+        msg.textContent='Connection error — check your internet'; msg.style.color='var(--miss)';
+      });
+    } else {
+      msg.textContent='No Firebase connection'; msg.style.color='var(--miss)';
+    }
+  }
+
+  // Check PIN from Firebase
+  if(db){
+    db.ref(clubKey+'/ct_admin_pin').once('value').then(function(snap){
+      doReconnect(snap.val() || localStorage.getItem('ct_admin_pin') || '0000');
+    }).catch(function(){
+      doReconnect(localStorage.getItem('ct_admin_pin') || '0000');
+    });
+  } else {
+    doReconnect(localStorage.getItem('ct_admin_pin') || '0000');
+  }
 }
 
 function changeAdminPin(){
