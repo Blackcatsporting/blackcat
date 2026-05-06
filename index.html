@@ -188,7 +188,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1778067260 -->
+<!-- build:1778011625 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -1035,13 +1035,12 @@ function connectAsTrapper(){
         toast('Waiting for admin to start event...', '');
       }
 
-      // One-time load of squads on connect
       db.ref(getKey()+'/ct_squads').once('value').then(function(snap2){
         var sq = snap2.val();
         if(sq){
           var arr = Array.isArray(sq) ? sq : Object.values(sq);
           localStorage.setItem('ct_squads', JSON.stringify(arr));
-          S.squads = arr;
+          if(!S.squads.length) S.squads = arr;
         }
 
         db.ref(getKey()+'/ct_active_session').once('value').then(function(snap3){
@@ -1055,20 +1054,6 @@ function connectAsTrapper(){
             checkedIn: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
             assignedSquad: null,
             assignedStation: null
-          });
-
-          // Live listener for squad updates (late entries from admin)
-          db.ref(getKey()+'/ct_squads').on('value', function(squadSnap){
-            var sqLive = squadSnap.val();
-            if(sqLive){
-              var arrLive = Array.isArray(sqLive) ? sqLive : Object.values(sqLive);
-              localStorage.setItem('ct_squads', JSON.stringify(arrLive));
-              S.squads = arrLive;
-              var squadScreen = document.getElementById('tr-screen-squads');
-              if(squadScreen && squadScreen.style.display !== 'none'){
-                buildSquadList();
-              }
-            }
           });
 
           // Listen for assignment from admin
@@ -2194,12 +2179,15 @@ function newEvent(){
   if(db){
     var oldKey = getKey();
     window._boardListener = null;
-    // Push clear signal to ALL devices so they know to reset — but do NOT delete the event data
-    // Old event data stays in Firebase permanently so it can be retrieved later
+    // Push clear signal to GLOBAL path so ALL devices see it regardless of event key
     db.ref('ct_global_clear').set(Date.now());
     db.ref(oldKey+'/ct_clear').set(Date.now());
+    db.ref(oldKey+'/ct_admin').set(null);
+    db.ref(oldKey+'/ct_squads').set(null);
+    db.ref(oldKey+'/ct_event_state').set(null);
     db.ref(oldKey+'/ct_trappers').set(null);
     db.ref(oldKey+'/ct_active_session').set('');
+    db.ref(oldKey+'/ct_station_status').set(null);
   }
 
   localStorage.removeItem('ct_squads');
