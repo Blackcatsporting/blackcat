@@ -188,7 +188,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1778077732 -->
+<!-- build:1778079369 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -2024,6 +2024,7 @@ function isNumericKeypadClub(){
 
 function buildNumericKeypad(){
   var total = S.stationBirds[trapStation] || S.birds || 6;
+  window._numericTotal = total; // Lock in the total for this station
   var el = document.getElementById('tr-bird-results');
   var numsCol = document.getElementById('tr-bird-nums');
   // Hide the entire Bird column including its label
@@ -2048,32 +2049,24 @@ function buildNumericKeypad(){
   // Build dynamic keypad based on station bird count
   var btnStyle = 'padding:24px 0;background:var(--surf2);border:2px solid var(--bdr);border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:38px;color:var(--txt);cursor:pointer;-webkit-tap-highlight-color:transparent;width:100%';
 
-  // Determine grid layout based on total birds
-  // Row 1: 0 through min(3, total), Row 2: remainder
-  var row1 = [], row2 = [];
-  for(var n = 0; n <= total; n++){
-    if(n <= 3) row1.push(n);
-    else row2.push(n);
+  // Split buttons into rows of max 4
+  var allNums = [];
+  for(var n = 0; n <= total; n++) allNums.push(n);
+
+  var rows = [];
+  for(var i = 0; i < allNums.length; i += 4){
+    rows.push(allNums.slice(i, i + 4));
   }
 
   var html = '<div style="text-align:center;padding:8px 0 10px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px">TAP SCORE (0 – '+total+')</div>';
 
-  // Row 1
-  html += '<div style="display:grid;grid-template-columns:repeat('+row1.length+',1fr);gap:12px;padding:0 0 10px 0;width:100%">';
-  row1.forEach(function(n){
-    html += '<button data-val="'+n+'" style="'+btnStyle+'" onclick="selectNumericScore('+n+')">'+n+'</button>';
-  });
-  html += '</div>';
-
-  // Row 2 (if any)
-  if(row2.length > 0){
-    var cols = Math.min(row2.length, 4);
-    html += '<div style="display:grid;grid-template-columns:repeat('+cols+',1fr);gap:12px;padding:0 0 10px 0;width:100%">';
-    row2.forEach(function(n){
+  rows.forEach(function(row){
+    html += '<div style="display:grid;grid-template-columns:repeat('+row.length+',1fr);gap:12px;padding:0 0 10px 0;width:100%">';
+    row.forEach(function(n){
       html += '<button data-val="'+n+'" style="'+btnStyle+'" onclick="selectNumericScore('+n+')">'+n+'</button>';
     });
     html += '</div>';
-  }
+  });
 
   html += '<div id="keypad-selected" style="text-align:center;padding:14px 0;font-family:Bebas Neue,sans-serif;font-size:22px;color:var(--dim);letter-spacing:2px">TAP A NUMBER</div>';
 
@@ -2104,7 +2097,7 @@ function buildNumericKeypad(){
 }
 
 function selectNumericScore(n){
-  var total = S.stationBirds[trapStation] || S.birds || 6;
+  var total = window._numericTotal || S.stationBirds[trapStation] || S.birds || 6;
   window._numericDead = n;
   window._numericTotal = total;
 
