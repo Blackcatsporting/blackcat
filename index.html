@@ -188,7 +188,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1778079369 -->
+<!-- build:1778081352 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -995,6 +995,7 @@ function submitEventCode(){
   var code = inp ? inp.value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'_') : '';
   if(!code){ toast('Enter an event code'); return; }
   localStorage.setItem('ct_event_key', code);
+  localStorage.setItem('ct_event_start', Date.now().toString());
   // Hide all overlays
   var overlay = document.getElementById('startup-overlay');
   if(overlay) overlay.style.display = 'none';
@@ -1114,7 +1115,8 @@ function connectAsTrapper(){
           // Listen on global clear path — fires regardless of event key
           db.ref('ct_global_clear').on('value', function(snap){
             var clearTime = snap.val();
-            if(clearTime && clearTime > Date.now() - 30000){
+            var eventStart = parseInt(localStorage.getItem('ct_event_start')||'0');
+            if(clearTime && clearTime > eventStart){
               localStorage.removeItem('ct_squads');
               localStorage.removeItem('ct_active_session');
               localStorage.removeItem('ct_event_key');
@@ -1126,7 +1128,8 @@ function connectAsTrapper(){
           });
           db.ref(getKey()+'/ct_clear').on('value', function(snap){
             var clearTime = snap.val();
-            if(clearTime && clearTime > Date.now() - 30000){
+            var eventStart = parseInt(localStorage.getItem('ct_event_start')||'0');
+            if(clearTime && clearTime > eventStart){
               localStorage.removeItem('ct_squads');
               localStorage.removeItem('ct_active_session');
               localStorage.removeItem('ct_event_key');
@@ -2301,6 +2304,7 @@ function startRound(){
   localStorage.setItem('ct_squads', JSON.stringify(S.squads));
   var key = S.name.replace(/[^A-Z0-9]/g,'_').substring(0,40);
   localStorage.setItem('ct_event_key', key);
+  localStorage.setItem('ct_event_start', Date.now().toString());
 
   fbPushEventState({ started:S.started, name:S.name, stations:S.stations, birds:S.birds, stationBirds:S.stationBirds, shooters:S.shooters, eventType:S.eventType, fitascSetup:fitascSetup, fitascParcours:FITASC_PARCOURS, club:S.club });
   fbPushSquads(S.squads);
