@@ -188,7 +188,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1778072758 -->
+<!-- build:1778077732 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -1118,6 +1118,7 @@ function connectAsTrapper(){
               localStorage.removeItem('ct_squads');
               localStorage.removeItem('ct_active_session');
               localStorage.removeItem('ct_event_key');
+              localStorage.setItem('ct_admin','[]');
               S.started = false; S.squads = []; S.shooters = [];
               toast('New event started by admin', '');
               setTimeout(function(){ location.reload(); }, 1500);
@@ -1126,10 +1127,10 @@ function connectAsTrapper(){
           db.ref(getKey()+'/ct_clear').on('value', function(snap){
             var clearTime = snap.val();
             if(clearTime && clearTime > Date.now() - 30000){
-              // Admin cleared event — reset trapper
               localStorage.removeItem('ct_squads');
               localStorage.removeItem('ct_active_session');
               localStorage.removeItem('ct_event_key');
+              localStorage.setItem('ct_admin','[]');
               S.started = false; S.squads = []; S.shooters = [];
               toast('Event cleared by admin', '');
               setTimeout(function(){
