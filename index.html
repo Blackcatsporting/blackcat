@@ -188,7 +188,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1778081352 -->
+<!-- build:1778082583 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -995,7 +995,7 @@ function submitEventCode(){
   var code = inp ? inp.value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'_') : '';
   if(!code){ toast('Enter an event code'); return; }
   localStorage.setItem('ct_event_key', code);
-  localStorage.setItem('ct_event_start', Date.now().toString());
+  localStorage.setItem('ct_join_time', Date.now().toString());
   // Hide all overlays
   var overlay = document.getElementById('startup-overlay');
   if(overlay) overlay.style.display = 'none';
@@ -1115,11 +1115,12 @@ function connectAsTrapper(){
           // Listen on global clear path — fires regardless of event key
           db.ref('ct_global_clear').on('value', function(snap){
             var clearTime = snap.val();
-            var eventStart = parseInt(localStorage.getItem('ct_event_start')||'0');
-            if(clearTime && clearTime > eventStart){
+            var myJoinTime = parseInt(localStorage.getItem('ct_join_time')||'0');
+            if(clearTime && myJoinTime > 0 && clearTime > myJoinTime){
               localStorage.removeItem('ct_squads');
               localStorage.removeItem('ct_active_session');
               localStorage.removeItem('ct_event_key');
+              localStorage.removeItem('ct_join_time');
               localStorage.setItem('ct_admin','[]');
               S.started = false; S.squads = []; S.shooters = [];
               toast('New event started by admin', '');
@@ -1128,11 +1129,12 @@ function connectAsTrapper(){
           });
           db.ref(getKey()+'/ct_clear').on('value', function(snap){
             var clearTime = snap.val();
-            var eventStart = parseInt(localStorage.getItem('ct_event_start')||'0');
-            if(clearTime && clearTime > eventStart){
+            var myJoinTime = parseInt(localStorage.getItem('ct_join_time')||'0');
+            if(clearTime && myJoinTime > 0 && clearTime > myJoinTime){
               localStorage.removeItem('ct_squads');
               localStorage.removeItem('ct_active_session');
               localStorage.removeItem('ct_event_key');
+              localStorage.removeItem('ct_join_time');
               localStorage.setItem('ct_admin','[]');
               S.started = false; S.squads = []; S.shooters = [];
               toast('Event cleared by admin', '');
