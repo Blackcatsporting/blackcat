@@ -188,7 +188,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1778070967 -->
+<!-- build:1778072758 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -2044,19 +2044,37 @@ function buildNumericKeypad(){
   document.getElementById('tr-lost').textContent = '—';
   document.getElementById('tr-left').textContent = total;
 
-  var html = '<div style="text-align:center;padding:8px 0 10px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px">TAP SCORE (0 – '+Math.min(total,6)+')</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:0 0 10px 0;width:100%" id="keypad-grid">'
-    +'<button data-val="0" style="padding:24px 0;background:var(--surf2);border:2px solid var(--bdr);border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:38px;color:var(--txt);cursor:pointer;-webkit-tap-highlight-color:transparent;width:100%" onclick="selectNumericScore(0)">0</button>'
-    +'<button data-val="1" style="padding:24px 0;background:var(--surf2);border:2px solid var(--bdr);border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:38px;color:var(--txt);cursor:pointer;-webkit-tap-highlight-color:transparent;width:100%" onclick="selectNumericScore(1)">1</button>'
-    +'<button data-val="2" style="padding:24px 0;background:var(--surf2);border:2px solid var(--bdr);border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:38px;color:var(--txt);cursor:pointer;-webkit-tap-highlight-color:transparent;width:100%" onclick="selectNumericScore(2)">2</button>'
-    +'<button data-val="3" style="padding:24px 0;background:var(--surf2);border:2px solid var(--bdr);border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:38px;color:var(--txt);cursor:pointer;-webkit-tap-highlight-color:transparent;width:100%" onclick="selectNumericScore(3)">3</button>'
-    +'</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:0 0 10px 0;width:100%">'
-    +'<button data-val="4" style="padding:24px 0;background:var(--surf2);border:2px solid var(--bdr);border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:38px;color:var(--txt);cursor:pointer;-webkit-tap-highlight-color:transparent;width:100%" onclick="selectNumericScore(4)">4</button>'
-    +'<button data-val="5" style="padding:24px 0;background:var(--surf2);border:2px solid var(--bdr);border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:38px;color:var(--txt);cursor:pointer;-webkit-tap-highlight-color:transparent;width:100%" onclick="selectNumericScore(5)">5</button>'
-    +'<button data-val="6" style="padding:24px 0;background:var(--surf2);border:2px solid var(--bdr);border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:38px;color:var(--txt);cursor:pointer;-webkit-tap-highlight-color:transparent;width:100%" onclick="selectNumericScore(6)">6</button>'
-    +'</div>'
-    +'<div id="keypad-selected" style="text-align:center;padding:14px 0;font-family:Bebas Neue,sans-serif;font-size:22px;color:var(--dim);letter-spacing:2px">TAP A NUMBER</div>';
+  // Build dynamic keypad based on station bird count
+  var btnStyle = 'padding:24px 0;background:var(--surf2);border:2px solid var(--bdr);border-radius:12px;font-family:Bebas Neue,sans-serif;font-size:38px;color:var(--txt);cursor:pointer;-webkit-tap-highlight-color:transparent;width:100%';
+
+  // Determine grid layout based on total birds
+  // Row 1: 0 through min(3, total), Row 2: remainder
+  var row1 = [], row2 = [];
+  for(var n = 0; n <= total; n++){
+    if(n <= 3) row1.push(n);
+    else row2.push(n);
+  }
+
+  var html = '<div style="text-align:center;padding:8px 0 10px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:2px">TAP SCORE (0 – '+total+')</div>';
+
+  // Row 1
+  html += '<div style="display:grid;grid-template-columns:repeat('+row1.length+',1fr);gap:12px;padding:0 0 10px 0;width:100%">';
+  row1.forEach(function(n){
+    html += '<button data-val="'+n+'" style="'+btnStyle+'" onclick="selectNumericScore('+n+')">'+n+'</button>';
+  });
+  html += '</div>';
+
+  // Row 2 (if any)
+  if(row2.length > 0){
+    var cols = Math.min(row2.length, 4);
+    html += '<div style="display:grid;grid-template-columns:repeat('+cols+',1fr);gap:12px;padding:0 0 10px 0;width:100%">';
+    row2.forEach(function(n){
+      html += '<button data-val="'+n+'" style="'+btnStyle+'" onclick="selectNumericScore('+n+')">'+n+'</button>';
+    });
+    html += '</div>';
+  }
+
+  html += '<div id="keypad-selected" style="text-align:center;padding:14px 0;font-family:Bebas Neue,sans-serif;font-size:22px;color:var(--dim);letter-spacing:2px">TAP A NUMBER</div>';
 
   el.innerHTML = html;
   el.style.cssText = 'flex:1';
