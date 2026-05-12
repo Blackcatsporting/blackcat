@@ -188,7 +188,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1778546474 -->
+<!-- build:1778547378 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -1263,7 +1263,8 @@ function setImportFormat(fmt){
 
 function parseSquadSheet(raw){
   var squads = {};
-  var isHF = isNumericKeypadClub();
+  var clubInput = (document.getElementById('ev-club') ? document.getElementById('ev-club').value : '') || localStorage.getItem('ct_club_name') || '';
+  var isHF = ['hudson farm','griffin & howe','griffin and howe'].some(function(c){ return clubInput.toLowerCase().indexOf(c) !== -1; });
   var lines = raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
   lines.forEach(function(line){
     if(!line.trim()) return;
