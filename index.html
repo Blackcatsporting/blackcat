@@ -188,7 +188,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1778412547 -->
+<!-- build:1778544039 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -1260,30 +1260,39 @@ function setImportFormat(fmt){
 
 function parseSquadSheet(raw){
   var squads = {};
+  var isHF = isNumericKeypadClub();
   var lines = raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
   lines.forEach(function(line){
     if(!line.trim()) return;
     var cols = line.split('\t');
 
-    // Left side: col 0=squad, col 1=name, col 2=gauge(optional)
+    // Left side: col 0=squad, col 1=name, col 2=gauge(optional), col 3=rental(HF only)
     if(cols[0] && cols[1] && cols[1].trim() && /^\d+$/.test(cols[0].trim())){
       var sq = parseInt(cols[0].trim());
       var name = cols[1].trim().replace(/\/SM\s*$/i,'').trim();
       var gauge = cols[2] && /^(12|20|28|410)$/.test(cols[2].trim()) ? cols[2].trim() : null;
+      var rental = isHF && cols[3] && cols[3].trim() ? cols[3].trim() : null;
       if(name && name.length > 1 && name.toLowerCase() !== 'shooter'){
-        var dn = gauge ? name+' ('+gauge+'ga)' : name;
+        var dn = name;
+        if(isHF && gauge && rental) dn = name+' ('+gauge+'ga / '+rental+')';
+        else if(isHF && gauge) dn = name+' ('+gauge+'ga)';
+        else if(isHF && rental) dn = name+' ('+rental+')';
         if(!squads[sq]) squads[sq]=[];
         if(squads[sq].indexOf(dn)===-1) squads[sq].push(dn);
       }
     }
 
-    // Right side: col 5=squad, col 6=name, col 7=gauge(optional)
+    // Right side: col 5=squad, col 6=name, col 7=gauge(optional), col 8=rental(HF only)
     if(cols[5] && cols[6] && cols[6].trim() && /^\d+$/.test(cols[5].trim())){
       var sq2 = parseInt(cols[5].trim());
       var name2 = cols[6].trim().replace(/\/SM\s*$/i,'').trim();
       var gauge2 = cols[7] && /^(12|20|28|410)$/.test(cols[7].trim()) ? cols[7].trim() : null;
+      var rental2 = isHF && cols[8] && cols[8].trim() ? cols[8].trim() : null;
       if(name2 && name2.length > 1 && name2.toLowerCase() !== 'shooter'){
-        var dn2 = gauge2 ? name2+' ('+gauge2+'ga)' : name2;
+        var dn2 = name2;
+        if(isHF && gauge2 && rental2) dn2 = name2+' ('+gauge2+'ga / '+rental2+')';
+        else if(isHF && gauge2) dn2 = name2+' ('+gauge2+'ga)';
+        else if(isHF && rental2) dn2 = name2+' ('+rental2+')';
         if(!squads[sq2]) squads[sq2]=[];
         if(squads[sq2].indexOf(dn2)===-1) squads[sq2].push(dn2);
       }
