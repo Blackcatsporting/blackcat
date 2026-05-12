@@ -188,7 +188,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1778544039 -->
+<!-- build:1778545452 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -1535,7 +1535,8 @@ function previewPaste(){
     for(var i=0;i<Math.min(3,lines.length);i++){
       info += '['+lines[i].substring(0,60)+']\n';
     }
-    prev.innerHTML = '<div style="color:var(--miss);font-family:DM Mono,monospace;font-size:11px;white-space:pre;word-break:break-all">'+info+'</div>';
+    prev.innerHTML = '<div style="color:var(--miss);font-family:DM Mono,monospace;font-size:11px;white-space:pre;word-break:break-all">'+info+'</div>'
+      +'<button onclick="document.getElementById(\'paste-box\').value=\'\';document.getElementById(\'paste-prev\').style.display=\'none\';" style="margin-top:8px;padding:8px 16px;background:var(--surf2);border:1px solid var(--bdr);border-radius:6px;color:var(--dim);font-family:DM Mono,monospace;font-size:11px;cursor:pointer;letter-spacing:1px">✕ CLEAR & TRY AGAIN</button>';
     return;
   }
   var names = [];
