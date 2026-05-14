@@ -188,7 +188,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1778547378 -->
+<!-- build:1778792537 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -2932,13 +2932,13 @@ function buildSquadList() {
   if(unscoredCount === 0){
     // Push complete status to Board
     updateStationStatus(trapStation+1, null, [], 'complete');
-    el.innerHTML = '<div onclick="switchToTrapper()" style="text-align:center;padding:30px;cursor:pointer">'
-+ '<div onclick="switchToTrapper()" style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:10px">&#10003; STATION '+(trapStation+1)+' COMPLETE</div>'
+    var nextSt = (trapStation + 1) % S.stations;
+    el.innerHTML = '<div style="text-align:center;padding:30px">'
+      + '<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:10px">&#10003; STATION '+(trapStation+1)+' COMPLETE</div>'
       + '<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);margin-bottom:30px">All squads scored at this station</div>'
-      + '<button onclick="switchToTrapper()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:12px">&#8617; SIGN OUT</button>'
-      + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px;margin-top:10px">Tap anywhere to sign out</div>'
+      + '<button onclick="trapStation='+nextSt+';scoredSquadKeys={};buildSquadList();" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:12px">&#9658; MOVE TO STATION '+(nextSt+1)+'</button>'
+      + '<button onclick="switchToTrapper()" style="display:block;width:100%;padding:14px;background:none;border:1px solid var(--bdr);border-radius:8px;color:var(--dim);font-family:DM Mono,monospace;font-size:11px;letter-spacing:1px;cursor:pointer">&#8617; SIGN OUT</button>'
       + '</div>';
-    // Auto sign out after 60 seconds
     return;
   }
 
