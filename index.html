@@ -188,7 +188,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1778793629 -->
+<!-- build:1778794493 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -3808,23 +3808,46 @@ function showStationSummary(squad, station, isAssigned){
         if(isAssigned && allDone){ showFinalSquadReview(squad); }
         else if(isAssigned){ moveToNextStation(); }
         else {
-          // Unassigned — advance to next station and clear scored keys
-          trapStation = (trapStation + 1) % S.stations;
-          scoredSquadKeys = {};
-          var stSel = document.getElementById('tr-st');
-          if(stSel) stSel.value = trapStation;
-          buildSquadList();
+          // Unassigned — check if all stations complete
+          var nextSt = trapStation + 1;
+          if(nextSt >= S.stations){
+            // All stations done
+            trShow('squads');
+            var el2 = document.getElementById('tr-squad-list');
+            if(el2) el2.innerHTML = '<div style="text-align:center;padding:40px 20px">'
+              +'<div style="font-family:Bebas Neue,sans-serif;font-size:32px;color:var(--hit);letter-spacing:3px;margin-bottom:10px">&#10003; ALL STATIONS COMPLETE</div>'
+              +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);letter-spacing:2px;margin-bottom:30px">All '+S.stations+' stations scored</div>'
+              +'<button onclick="switchToTrapper()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#8617; SIGN OUT</button>'
+              +'</div>';
+          } else {
+            trapStation = nextSt;
+            scoredSquadKeys = {};
+            var stSel = document.getElementById('tr-st');
+            if(stSel) stSel.value = trapStation;
+            buildSquadList();
+          }
         }
       });
       nextBtn.addEventListener('touchstart', function(e){ e.preventDefault();
         if(isAssigned && allDone){ showFinalSquadReview(squad); }
         else if(isAssigned){ moveToNextStation(); }
         else {
-          trapStation = (trapStation + 1) % S.stations;
-          scoredSquadKeys = {};
-          var stSel = document.getElementById('tr-st');
-          if(stSel) stSel.value = trapStation;
-          buildSquadList();
+          var nextSt2 = trapStation + 1;
+          if(nextSt2 >= S.stations){
+            trShow('squads');
+            var el3 = document.getElementById('tr-squad-list');
+            if(el3) el3.innerHTML = '<div style="text-align:center;padding:40px 20px">'
+              +'<div style="font-family:Bebas Neue,sans-serif;font-size:32px;color:var(--hit);letter-spacing:3px;margin-bottom:10px">&#10003; ALL STATIONS COMPLETE</div>'
+              +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);letter-spacing:2px;margin-bottom:30px">All '+S.stations+' stations scored</div>'
+              +'<button onclick="switchToTrapper()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#8617; SIGN OUT</button>'
+              +'</div>';
+          } else {
+            trapStation = nextSt2;
+            scoredSquadKeys = {};
+            var stSel2 = document.getElementById('tr-st');
+            if(stSel2) stSel2.value = trapStation;
+            buildSquadList();
+          }
         }
       },{passive:false});
     }
