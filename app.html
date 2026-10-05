@@ -188,7 +188,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1778795344 -->
+<!-- build:1778011625 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -429,7 +429,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
       <div id="tr-arrival-note" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--org);letter-spacing:1px;text-transform:uppercase"></div>
       <div style="display:flex;align-items:center;gap:8px">
         <div id="tr-conn-status" style="font-family:DM Mono,monospace;font-size:10px;letter-spacing:1px;padding:4px 10px;border-radius:20px;background:var(--surf2);color:var(--dim)">● CONNECTING</div>
-        <div id="tr-menu-btn-squads" ontouchstart="event.preventDefault();showTrapperMenu();" onclick="showTrapperMenu();" style="border:1px solid var(--bdr);border-radius:6px;color:var(--dim);font-family:DM Mono,monospace;font-size:14px;padding:6px 10px;cursor:pointer;user-select:none;-webkit-user-select:none;display:inline-block">☰</div>
+        <button id="tr-menu-btn-squads" ontouchstart="event.preventDefault();showTrapperMenu();" onclick="showTrapperMenu();" style="background:none;border:1px solid var(--bdr);border-radius:6px;color:var(--dim);font-family:DM Mono,monospace;font-size:14px;padding:6px 10px;cursor:pointer;-webkit-tap-highlight-color:transparent">☰</button>
       </div>
     </div>
     <!-- Station bar -->
@@ -458,7 +458,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
         <div id="tr-squad-label" style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gold);letter-spacing:2px"></div>
         <div id="tr-progress" style="font-family:'DM Mono',monospace;font-size:13px;color:var(--org)"></div>
       </div>
-      <div id="tr-menu-btn-scoring" ontouchstart="event.preventDefault();showTrapperMenu();" onclick="showTrapperMenu();" style="border:1px solid var(--bdr);border-radius:6px;color:var(--dim);font-family:DM Mono,monospace;font-size:18px;padding:8px 12px;cursor:pointer;user-select:none;-webkit-user-select:none;display:inline-block;flex-shrink:0">☰</div>
+      <button id="tr-menu-btn-scoring" ontouchstart="event.preventDefault();showTrapperMenu();" onclick="showTrapperMenu();" style="background:none;border:1px solid var(--bdr);border-radius:6px;color:var(--dim);font-family:DM Mono,monospace;font-size:18px;padding:8px 12px;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent">☰</button>
     </div>
     <!-- NOW SHOOTING -->
     <div style="background:#0a0a2e;border:3px solid #00aaff;border-radius:14px;padding:28px 20px;text-align:center;margin-bottom:16px" id="tr-now-shooting-box">
@@ -1914,7 +1914,8 @@ function showTrapperMenu(){
 
   var html = '<div style="background:var(--surf);border:2px solid var(--bdr);border-radius:14px;padding:24px;width:100%;max-width:320px">'
     +'<div style="font-family:Bebas Neue,sans-serif;font-size:22px;color:var(--gold);letter-spacing:2px;margin-bottom:4px">☰ MENU</div>'
-    +'<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px;margin-bottom:20px">Emergency options only</div>';
+    +'<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:1px;margin-bottom:20px">Emergency options only</div>'
+    +'<button id="tm-scorecard" style="display:block;width:100%;padding:14px;background:var(--surf2);border:1px solid var(--gold);border-radius:8px;color:var(--gold);font-family:DM Mono,monospace;font-size:12px;letter-spacing:1px;cursor:pointer;margin-bottom:10px;text-align:left">📊 &nbsp; VIEW MY SCORECARD</button>';
 
   if(onScoring){
     html += '<button id="tm-order" style="display:block;width:100%;padding:14px;background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;color:var(--txt);font-family:DM Mono,monospace;font-size:12px;letter-spacing:1px;cursor:pointer;margin-bottom:10px;text-align:left">📋 &nbsp; SET SHOOTING ORDER</button>';
@@ -1957,6 +1958,38 @@ function showTrapperMenu(){
 
   var closeBtn = document.getElementById('tm-close');
   if(closeBtn){ closeBtn.onclick = close; closeBtn.addEventListener('touchstart',function(e){e.preventDefault();close();},{passive:false}); }
+
+  var scorecardBtn = document.getElementById('tm-scorecard');
+  if(scorecardBtn){
+    function openMyScorecard(){
+      close();
+      var key = localStorage.getItem('ct_event_key')||'';
+      var name = trapperName||'';
+      if(key && name){
+        shooterEventKey = key;
+        shooterName = name;
+        var screen = document.getElementById('shooter-screen');
+        if(screen) screen.style.display = 'block';
+        var nameEntry = document.getElementById('shooter-name-entry');
+        var scorecard = document.getElementById('shooter-scorecard');
+        if(nameEntry) nameEntry.style.display = 'none';
+        if(scorecard) scorecard.style.display = 'block';
+        if(db){
+          db.ref(key+'/ct_admin').once('value').then(function(snap){
+            var val = snap.val();
+            if(!val) return;
+            var log = Array.isArray(val) ? val : Object.values(val);
+            shooterName = name;
+            drawShooterScorecard(log);
+          });
+        }
+      } else {
+        toast('No active event', '');
+      }
+    }
+    scorecardBtn.onclick = openMyScorecard;
+    scorecardBtn.addEventListener('touchstart',function(e){e.preventDefault();openMyScorecard();},{passive:false});
+  }
 
   var signoutBtn = document.getElementById('tm-signout');
   if(signoutBtn){ signoutBtn.onclick = function(){ close(); switchToTrapper(); }; signoutBtn.addEventListener('touchstart',function(e){e.preventDefault();close();switchToTrapper();},{passive:false}); }
@@ -3013,7 +3046,7 @@ function buildSquadList() {
 
     btn.appendChild(lbl);
     btn.appendChild(names);
-    if(!isComplete) btn.onclick = (function(i){ return function(){ startScoringSquad(i); }; })(realIdx);
+    if(!isComplete) btn.onclick = (function(i, sq){ return function(){ showSquadConfirmation(sq.label||sq.num, true, i); }; })(realIdx, sq);
     el.appendChild(btn);
   });
 }
@@ -4930,7 +4963,7 @@ function updateStationStatus(station, squad, members, status){
   db.ref(key+'/ct_station_status/'+trapKey).set(data);
 }
 
-function showSquadConfirmation(squadLabel, isFirst){
+function showSquadConfirmation(squadLabel, isFirst, squadIdx){
   // Find squad members
   var squads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
   var sq = squads.find(function(s){ return String(s.label||s.num)===String(squadLabel); });
@@ -4953,9 +4986,11 @@ function showSquadConfirmation(squadLabel, isFirst){
     +'<input id="sq-confirm-inp" class="inp" type="text" value="'+squadLabel+'" style="flex:1;font-size:24px;text-align:center;letter-spacing:2px" placeholder="Squad #">'
     +'</div>'
     +'<button onclick="confirmSquadAndScore()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:28px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:10px">▶ START SCORING</button>'
+    +'<button onclick="var ov=document.getElementById(\'squad-confirm-overlay\');if(ov)ov.remove();" style="display:block;width:100%;padding:14px;background:none;border:1px solid var(--gold);border-radius:10px;font-family:DM Mono,monospace;font-size:12px;color:var(--gold);cursor:pointer;letter-spacing:1px;margin-bottom:10px">← BACK — WRONG SQUAD</button>'
     +'<button onclick="markStationComplete()" style="display:block;width:100%;padding:12px;background:none;border:1px solid var(--bdr);border-radius:10px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);cursor:pointer;letter-spacing:1px">✓ NO MORE SQUADS — STATION COMPLETE</button>'
     +'</div>';
 
+  overlay.dataset.squadIdx = (squadIdx !== undefined) ? squadIdx : '';
   document.body.appendChild(overlay);
 
   // Update squad members when input changes
@@ -4987,12 +5022,19 @@ function confirmSquadAndScore(){
   // Update Firebase — now scoring
   updateStationStatus(trapStation+1, label, sq.members, 'scoring');
 
-  // Remove overlay
+  // Remove overlay and retrieve stored squad index
   var ov2 = document.getElementById('squad-confirm-overlay');
+  var storedIdx = ov2 ? parseInt(ov2.dataset.squadIdx, 10) : -1;
   if(ov2) ov2.remove();
 
+  // Fall back to finding by label if index not stored
+  if(isNaN(storedIdx) || storedIdx < 0){
+    var allSquads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
+    storedIdx = allSquads.findIndex(function(s){ return String(s.label||s.num)===label; });
+  }
+
   // Fully reset scoring state for fresh squad
-  trapSquadIdx = sqIdx;
+  trapSquadIdx = storedIdx;
   trapMemberIdx = 0;
   trapScoredCount = 0;
   trapAssignedSquad = label;
@@ -5000,7 +5042,7 @@ function confirmSquadAndScore(){
   scoredSquadKeys[(label)+'_'+trapStation] = false;
 
   // Show who shoots first
-  startScoringSquad(sqIdx, true);
+  startScoringSquad(storedIdx, true);
 }
 
 function advanceToNextStation(){
