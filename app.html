@@ -2998,8 +2998,30 @@ function buildSquadList() {
         + '</div>';
       return;
     } else {
-      filtered.sort(function(a,b){ return squads.indexOf(a) - squads.indexOf(b); });
-      var nextSq = filtered[0];
+      // Pick next squad for this station.
+      // Squads whose number matches this station go first (e.g. 1a,1b at station 1),
+      // then remaining squads in their natural order.
+      var stNum = trapStation + 1; // stations are 0-indexed internally
+      function squadStationNum(sq){
+        // Extract leading number from label e.g. "1a"->1, "12b"->12, "3"->3
+        var m = String(sq.label||sq.num).match(/^(\d+)/);
+        return m ? parseInt(m[1]) : 0;
+      }
+      // Home squads (matching station number) first, then remaining squads
+      // counting DOWN from stNum-1 wrapping around (squads rotate in reverse numerical order)
+      var home = filtered.filter(function(sq){ return squadStationNum(sq) === stNum; });
+      var away = filtered.filter(function(sq){ return squadStationNum(sq) !== stNum; });
+      var totalSquads = squads.length;
+      away.sort(function(a, b){
+        // Distance counting down from stNum: stNum-1, stNum-2, ... wrapping
+        function dist(sq){
+          var n = squadStationNum(sq);
+          return ((stNum - n - 1) + totalSquads) % totalSquads;
+        }
+        return dist(a) - dist(b);
+      });
+      var ordered = home.concat(away);
+      var nextSq = ordered[0];
       var nextIdx = -1;
       S.squads.forEach(function(ssq, si){
         if(String(ssq.label||ssq.num)===String(nextSq.label||nextSq.num) && (ssq.session||'')===(nextSq.session||'')) nextIdx = si;
