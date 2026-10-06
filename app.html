@@ -2991,8 +2991,12 @@ function buildSquadList() {
 
     // Auto-present next squad only after trapper has confirmed their station
     if(!window._trapperStationConfirmed){
-      // Show the squad list so trapper can confirm their station first
-      // (falls through to normal list rendering below)
+      // Show a confirm button — trapper hasn't explicitly selected their station yet
+      el.innerHTML = '<div style="text-align:center;padding:30px">'
+        + '<div style="font-family:DM Mono,monospace;font-size:12px;color:#555;letter-spacing:1px;margin-bottom:20px">SELECT YOUR STATION ABOVE THEN TAP:</div>'
+        + '<button onclick="window._trapperStationConfirmed=true;buildSquadList();" style="display:block;width:100%;padding:22px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:28px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; I\'M AT STATION '+(trapStation+1)+'</button>'
+        + '</div>';
+      return;
     } else {
       filtered.sort(function(a,b){ return squads.indexOf(a) - squads.indexOf(b); });
       var nextSq = filtered[0];
