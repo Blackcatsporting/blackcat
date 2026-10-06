@@ -435,7 +435,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
     <!-- Station bar -->
     <div id="tr-station-bar" style="background:var(--surf);border:2px solid var(--org);border-radius:10px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px">
       <div id="tr-station-label" style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--org);letter-spacing:2px;white-space:nowrap">MY STATION</div>
-      <select id="tr-st" class="inp" style="margin-bottom:0;flex:1" onchange="trapStation=parseInt(this.value);scoredSquadKeys={};window._trapperStationConfirmed=true;buildSquadList()"></select>
+      <select id="tr-st" class="inp" style="margin-bottom:0;flex:1" onchange="trapStation=parseInt(this.value);scoredSquadKeys={};try{localStorage.removeItem('ct_scored_keys');}catch(e){};window._trapperStationConfirmed=true;buildSquadList()"></select>
     </div>
     <!-- Session filter -->
     <div id="tr-session-bar" style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:10px 16px;margin-bottom:10px">
@@ -2818,6 +2818,7 @@ function drawTrapperPick() {
     stSel.onchange = function(){
       trapStation = parseInt(this.value);
       scoredSquadKeys = {};
+      try{ localStorage.removeItem('ct_scored_keys'); }catch(e){}
       updateArrivalNote();
       if(trapperName) updateStationStatus(trapStation+1, null, [], 'waiting');
       window._trapperStationConfirmed = true;
@@ -2886,6 +2887,14 @@ function getNextRotationSquad(currentSquad){
 function buildSquadList() {
   var el = document.getElementById('tr-squad-list');
   el.innerHTML = '';
+
+  // Restore scored keys from localStorage in case they were wiped by a listener
+  if(!trapAssignedSquad && Object.keys(scoredSquadKeys).length === 0){
+    try{
+      var saved = localStorage.getItem('ct_scored_keys');
+      if(saved) scoredSquadKeys = JSON.parse(saved);
+    }catch(e){}
+  }
 
   // Use S.squads as primary source so indices stay in sync with startScoringSquad
   var squads = S.squads.length ? S.squads : JSON.parse(localStorage.getItem('ct_squads')||'[]');
@@ -4489,6 +4498,7 @@ function trapSubmit() {
     var sq = S.squads[trapSquadIdx];
     var sqKey = (sq.label||sq.num)+'_'+trapStation;
     scoredSquadKeys[sqKey] = true;
+    try{ localStorage.setItem('ct_scored_keys', JSON.stringify(scoredSquadKeys)); }catch(e){}
     var isAssigned = trapAssignedSquad !== null && trapAssignedSquad !== undefined && trapAssignedSquad !== '';
     trapSquadIdx = -1;
     showStationSummary(sq, trapStation, isAssigned);
