@@ -435,7 +435,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
     <!-- Station bar -->
     <div id="tr-station-bar" style="background:var(--surf);border:2px solid var(--org);border-radius:10px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px">
       <div id="tr-station-label" style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--org);letter-spacing:2px;white-space:nowrap">MY STATION</div>
-      <select id="tr-st" class="inp" style="margin-bottom:0;flex:1" onchange="trapStation=parseInt(this.value);scoredSquadKeys={};try{localStorage.removeItem('ct_scored_keys');}catch(e){};try{localStorage.removeItem('ct_completed_stations');}catch(e){};window._trapperStationConfirmed=true;buildSquadList()"></select>
+      <select id="tr-st" class="inp" style="margin-bottom:0;flex:1" onchange="trapStation=parseInt(this.value);scoredSquadKeys={};buildSquadList()"></select>
     </div>
     <!-- Session filter -->
     <div id="tr-session-bar" style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:10px 16px;margin-bottom:10px">
@@ -2217,7 +2217,7 @@ function trapSubmitNumeric(){
   var squadDone = trapScoredCount >= (S.squads[trapSquadIdx] ? S.squads[trapSquadIdx].members.length : 1);
   if(squadDone){
     var sq = S.squads[trapSquadIdx];
-    var sqKey = String(sq.label||sq.num).toUpperCase()+'_'+trapStation;
+    var sqKey = (sq.label||sq.num)+'_'+trapStation;
     scoredSquadKeys[sqKey] = true;
     var isAssigned = trapAssignedSquad !== null && trapAssignedSquad !== undefined && trapAssignedSquad !== '';
     trapSquadIdx = -1;
@@ -2818,11 +2818,9 @@ function drawTrapperPick() {
     stSel.onchange = function(){
       trapStation = parseInt(this.value);
       scoredSquadKeys = {};
-      try{ localStorage.removeItem('ct_scored_keys'); }catch(e){}
-      try{ localStorage.removeItem('ct_completed_stations'); }catch(e){}
       updateArrivalNote();
+      // Register trapper at their chosen station
       if(trapperName) updateStationStatus(trapStation+1, null, [], 'waiting');
-      window._trapperStationConfirmed = true;
       buildSquadList();
     };
   }
@@ -2835,9 +2833,7 @@ function drawTrapperPick() {
   var trapHdr = document.getElementById('tr-trapper-name');
   if(trapHdr) trapHdr.textContent = trapperName ? '' + trapperName : 'Trapper';
   trShow('squads');
-  // For unassigned trappers, don't auto-call buildSquadList on load —
-  // wait for the trapper to pick their station first (onchange sets _trapperStationConfirmed)
-  if(trapAssignedSquad) buildSquadList();
+  buildSquadList();
   trapperPushState();
   wireTrapperMenuButtons();
 }
@@ -2860,7 +2856,7 @@ function getNextRotationSquad(currentSquad){
       return String(sq.label||sq.num).toUpperCase() === baseNum+'B';
     });
     if(bSquad){
-      var bKey = String(bSquad.label||bSquad.num).toUpperCase()+'_'+trapStation;
+      var bKey = (bSquad.label||bSquad.num)+'_'+trapStation;
       if(!scoredSquadKeys[bKey]) return bSquad;
     }
   }
@@ -2878,7 +2874,7 @@ function getNextRotationSquad(currentSquad){
       return String(s.label||s.num).toUpperCase() === candidate.toUpperCase();
     });
     if(sq){
-      var sqKey = String(sq.label||sq.num).toUpperCase()+'_'+trapStation;
+      var sqKey = (sq.label||sq.num)+'_'+trapStation;
       if(!scoredSquadKeys[sqKey]) return sq;
     }
   }
@@ -2889,34 +2885,8 @@ function buildSquadList() {
   var el = document.getElementById('tr-squad-list');
   el.innerHTML = '';
 
-  // Restore scored keys from localStorage in case they were wiped by a listener
-  if(!trapAssignedSquad && Object.keys(scoredSquadKeys).length === 0){
-    try{
-      var saved = localStorage.getItem('ct_scored_keys');
-      if(saved) scoredSquadKeys = JSON.parse(saved);
-    }catch(e){}
-  }
-
-  // Use S.squads as primary source so indices stay in sync with startScoringSquad
-  var squads = S.squads.length ? S.squads : JSON.parse(localStorage.getItem('ct_squads')||'[]');
-
-  // If squads still empty, Firebase hasn't loaded yet — retry in 1 second
-  if(!squads.length && S.started){
-    el.innerHTML = '<div style="text-align:center;padding:30px;font-family:DM Mono,monospace;font-size:12px;color:var(--dim);letter-spacing:1px">Loading squads...</div>';
-    setTimeout(function(){
-      var sq2 = JSON.parse(localStorage.getItem('ct_squads')||'[]');
-      if(sq2.length){ S.squads = sq2; buildSquadList(); }
-      else if(db){
-        db.ref(getKey()+'/ct_squads').once('value').then(function(snap){
-          var v = snap.val();
-          if(v){ var arr=Array.isArray(v)?v:Object.values(v); localStorage.setItem('ct_squads',JSON.stringify(arr)); S.squads=arr; buildSquadList(); }
-        });
-      }
-    }, 1000);
-    return;
-  }
-
-  if(!squads.length) squads = [{num:1, label:'1', session:'', members:S.shooters}];
+  var squads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
+  if(!squads.length) squads = S.squads.length ? S.squads : [{num:1, label:'1', session:'', members:S.shooters}];
   // Deduplicate squads by label+session
   var seen = {};
   squads = squads.filter(function(sq){
@@ -2966,10 +2936,6 @@ function buildSquadList() {
     });
   } else if(S.eventType === '5STAND') {
     filtered = squads;
-  } else if(!trapAssignedSquad) {
-    // Unassigned trapper: show ALL squads regardless of session filter
-    // (session filter is for assigned mode; unassigned trapper sees every squad that comes through)
-    filtered = squads;
   } else if(trapSessionFilter) {
     filtered = squads.filter(function(sq){ return (sq.session||'') === trapSessionFilter; });
   } else if(activeSess) {
@@ -2978,80 +2944,34 @@ function buildSquadList() {
     filtered = squads;
   }
 
-  // For unassigned trappers — filter to unscored squads and handle all states
+  // For unassigned trappers — only show unscored squads
   if(!trapAssignedSquad){
-    var allUnassigned = filtered.slice(); // all squads before scoring filter
     filtered = filtered.filter(function(sq){
-      var sqKey = String(sq.label||sq.num).toUpperCase()+'_'+trapStation;
+      var sqKey = (sq.label||sq.num)+'_'+trapStation;
       return !scoredSquadKeys[sqKey];
     });
-
-    if(filtered.length === 0){
-      // All squads done at this station — mark it and check if all stations done
-      updateStationStatus(trapStation+1, null, [], 'complete');
-      // Track completed stations in localStorage
-      var completedStationsKey = 'ct_completed_stations';
-      var completedStations = {};
-      try{ var cs = localStorage.getItem(completedStationsKey); if(cs) completedStations = JSON.parse(cs); }catch(e){}
-      completedStations[trapStation] = true;
-      try{ localStorage.setItem(completedStationsKey, JSON.stringify(completedStations)); }catch(e){}
-      var totalStations = S.stations || 1;
-      el.innerHTML = '<div style="text-align:center;padding:30px">'
-        + '<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:10px">&#10003; STATION '+(trapStation+1)+' COMPLETE</div>'
-        + '<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);margin-bottom:30px">All squads scored — good shooting!</div>'
-        + '<button onclick="switchToTrapper();" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer">&#8617; SIGN OUT</button>'
-        + '</div>';
-      return;
-    }
-
-    // Auto-present next squad only after trapper has confirmed their station
-    if(!window._trapperStationConfirmed){
-      // Show a confirm button — trapper hasn't explicitly selected their station yet
-      el.innerHTML = '<div style="text-align:center;padding:30px">'
-        + '<div style="font-family:DM Mono,monospace;font-size:12px;color:#555;letter-spacing:1px;margin-bottom:20px">SELECT YOUR STATION ABOVE THEN TAP:</div>'
-        + '<button onclick="window._trapperStationConfirmed=true;buildSquadList();" style="display:block;width:100%;padding:22px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:28px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; I\'M AT STATION '+(trapStation+1)+'</button>'
-        + '</div>';
-      return;
-    } else {
-      // Pick next squad for this station.
-      // Squads whose number matches this station go first (e.g. 1a,1b at station 1),
-      // then remaining squads in their natural order.
-      var stNum = trapStation + 1; // stations are 0-indexed internally
-      function squadStationNum(sq){
-        // Extract leading number from label e.g. "1a"->1, "12b"->12, "3"->3
-        var m = String(sq.label||sq.num).match(/^(\d+)/);
-        return m ? parseInt(m[1]) : 0;
-      }
-      // Home squads (matching station number) first, then remaining squads
-      // counting DOWN from stNum-1 wrapping around (squads rotate in reverse numerical order)
-      var home = filtered.filter(function(sq){ return squadStationNum(sq) === stNum; });
-      var away = filtered.filter(function(sq){ return squadStationNum(sq) !== stNum; });
-      var totalSquads = squads.length;
-      away.sort(function(a, b){
-        // Distance counting down from stNum: stNum-1, stNum-2, ... wrapping
-        function dist(sq){
-          var n = squadStationNum(sq);
-          return ((stNum - n - 1) + totalSquads) % totalSquads;
-        }
-        return dist(a) - dist(b);
-      });
-      var ordered = home.concat(away);
-      var nextSq = ordered[0];
-      var nextIdx = -1;
-      S.squads.forEach(function(ssq, si){
-        if(String(ssq.label||ssq.num)===String(nextSq.label||nextSq.num) && (ssq.session||'')===(nextSq.session||'')) nextIdx = si;
-      });
-      if(nextIdx === -1) nextIdx = squads.indexOf(nextSq);
-      showSquadConfirmation(nextSq.label||nextSq.num, true, nextIdx);
-      return;
-    }
   }
+
+  var unscoredCount = filtered.length;
 
   if(filtered.length === 0){
     var msg = activeSess
       ? 'No squads for this session.<br>Ask admin to select a session.'
       : 'No squads found.<br>Import shooters in Setup first.';
     el.innerHTML = '<div style="text-align:center;padding:30px;font-family:DM Mono,monospace;font-size:12px;color:var(--dim);letter-spacing:1px">'+msg+'</div>';
+    return;
+  }
+
+  if(unscoredCount === 0){
+    // Push complete status to Board
+    updateStationStatus(trapStation+1, null, [], 'complete');
+    var nextSt = (trapStation + 1) % S.stations;
+    el.innerHTML = '<div style="text-align:center;padding:30px">'
+      + '<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:10px">&#10003; STATION '+(trapStation+1)+' COMPLETE</div>'
+      + '<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);margin-bottom:30px">All squads scored at this station</div>'
+      + '<button onclick="trapStation='+nextSt+';scoredSquadKeys={};buildSquadList();" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:12px">&#9658; MOVE TO STATION '+(nextSt+1)+'</button>'
+      + '<button onclick="switchToTrapper()" style="display:block;width:100%;padding:14px;background:none;border:1px solid var(--bdr);border-radius:8px;color:var(--dim);font-family:DM Mono,monospace;font-size:11px;letter-spacing:1px;cursor:pointer">&#8617; SIGN OUT</button>'
+      + '</div>';
     return;
   }
 
@@ -3097,7 +3017,7 @@ function buildSquadList() {
     });
     if(realIdx === -1) realIdx = squads.indexOf(sq);
 
-    var sqKey = String(sq.label||sq.num).toUpperCase()+'_'+trapStation;
+    var sqKey = (sq.label||sq.num) + '_' + trapStation;
     if(scoredSquadKeys[sqKey]) return;
     if(renderedSqKeys[sqKey]) return;
     renderedSqKeys[sqKey] = true;
@@ -3769,10 +3689,8 @@ function startScoringSquad(squadIdx, keepStation) {
 
   updateStationStatus(trapStation+1, squad.label||squad.num, squad.members, 'waiting');
 
-  // In unassigned mode, each squad is new — show order screen for each one
-  var isUnassigned = !trapAssignedSquad;
-  var squadAlreadyOrdered = window._squadOrderSet && window._squadOrderSet[String(squad.label||squad.num)];
-  if(!window._trapperOrderDone || (isUnassigned && !squadAlreadyOrdered)){
+  // Only show order screen on very first squad of this trapper's session
+  if(!window._trapperOrderDone){
     // First squad ever — show order screen
     showOrderScreen(
       squad.members,
@@ -3895,10 +3813,10 @@ function showStationSummary(squad, station, isAssigned){
     }
   } else {
     html += '<div style="text-align:center;padding:10px 0 14px">'
-      +'<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:4px">&#10003; SQUAD '+squadLabel+' DONE</div>'
-      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px">Scores recorded — ready for next squad</div>'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:4px">&#10003; ALL DONE WITH SQUAD '+squadLabel+'</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--dim);letter-spacing:1px">Scores recorded — next squad loading</div>'
       +'</div>';
-    html += '<button id="summary-next-btn" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; NEXT SQUAD</button>';
+    html += '<button id="summary-next-btn" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; NEXT STATION</button>';
   }
 
   html += '</div>';
@@ -3923,18 +3841,46 @@ function showStationSummary(squad, station, isAssigned){
         if(isAssigned && allDone){ showFinalSquadReview(squad); }
         else if(isAssigned){ moveToNextStation(); }
         else {
-          window._trapperStationConfirmed = true;
-          trShow('squads');
-          buildSquadList();
+          // Unassigned — check if all stations complete
+          var nextSt = trapStation + 1;
+          if(nextSt >= S.stations){
+            // All stations done
+            trShow('squads');
+            var el2 = document.getElementById('tr-squad-list');
+            if(el2) el2.innerHTML = '<div style="text-align:center;padding:40px 20px">'
+              +'<div style="font-family:Bebas Neue,sans-serif;font-size:32px;color:var(--hit);letter-spacing:3px;margin-bottom:10px">&#10003; ALL STATIONS COMPLETE</div>'
+              +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);letter-spacing:2px;margin-bottom:30px">All '+S.stations+' stations scored</div>'
+              +'<button onclick="switchToTrapper()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#8617; SIGN OUT</button>'
+              +'</div>';
+          } else {
+            trapStation = nextSt;
+            scoredSquadKeys = {};
+            var stSel = document.getElementById('tr-st');
+            if(stSel) stSel.value = trapStation;
+            buildSquadList();
+          }
         }
       });
       nextBtn.addEventListener('touchstart', function(e){ e.preventDefault();
         if(isAssigned && allDone){ showFinalSquadReview(squad); }
         else if(isAssigned){ moveToNextStation(); }
         else {
-          window._trapperStationConfirmed = true;
-          trShow('squads');
-          buildSquadList();
+          var nextSt2 = trapStation + 1;
+          if(nextSt2 >= S.stations){
+            trShow('squads');
+            var el3 = document.getElementById('tr-squad-list');
+            if(el3) el3.innerHTML = '<div style="text-align:center;padding:40px 20px">'
+              +'<div style="font-family:Bebas Neue,sans-serif;font-size:32px;color:var(--hit);letter-spacing:3px;margin-bottom:10px">&#10003; ALL STATIONS COMPLETE</div>'
+              +'<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);letter-spacing:2px;margin-bottom:30px">All '+S.stations+' stations scored</div>'
+              +'<button onclick="switchToTrapper()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:22px;letter-spacing:2px;color:#fff;cursor:pointer">&#8617; SIGN OUT</button>'
+              +'</div>';
+          } else {
+            trapStation = nextSt2;
+            scoredSquadKeys = {};
+            var stSel2 = document.getElementById('tr-st');
+            if(stSel2) stSel2.value = trapStation;
+            buildSquadList();
+          }
         }
       },{passive:false});
     }
@@ -4223,7 +4169,7 @@ function scoreCurrentMember() {
   if (trapScoredCount >= members.length) {
     trapScoredCount = 0;
 
-    var sqKey = String(squad.label||squad.num).toUpperCase()+'_'+trapStation;
+    var sqKey = (squad.label||squad.num) + '_' + trapStation;
     scoredSquadKeys[sqKey] = true;
 
     var isAssigned = trapAssignedSquad !== null && trapAssignedSquad !== undefined && trapAssignedSquad !== '';
@@ -4501,13 +4447,12 @@ function trapSubmit() {
   // Check if entire squad is done at this station
   var squadDone = trapScoredCount >= (S.squads[trapSquadIdx] ? S.squads[trapSquadIdx].members.length : 1);
   if(squadDone){
-    var sq = S.squads[trapSquadIdx];
-    var sqKey = String(sq.label||sq.num).toUpperCase()+'_'+trapStation;
-    scoredSquadKeys[sqKey] = true;
-    try{ localStorage.setItem('ct_scored_keys', JSON.stringify(scoredSquadKeys)); }catch(e){}
-    var isAssigned = trapAssignedSquad !== null && trapAssignedSquad !== undefined && trapAssignedSquad !== '';
-    trapSquadIdx = -1;
-    showStationSummary(sq, trapStation, isAssigned);
+    var currentLabel = S.squads[trapSquadIdx] ? String(S.squads[trapSquadIdx].label||S.squads[trapSquadIdx].num) : '1';
+    // For sporting clays: mark squad scored and continue
+      var sqKey = currentLabel + '_' + trapStation;
+      scoredSquadKeys[sqKey] = true;
+      updateStationStatus(trapStation+1, currentLabel, [], 'waiting');
+      scoreCurrentMember();
   } else {
     scoreCurrentMember();
   }
@@ -5022,137 +4967,79 @@ function showSquadConfirmation(squadLabel, isFirst, squadIdx){
   // Find squad members
   var squads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
   var sq = squads.find(function(s){ return String(s.label||s.num)===String(squadLabel); });
-  // Working copy of members — trapper can add/remove before scoring starts
-  var activeMembers = sq ? sq.members.slice() : [];
+  var members = sq ? sq.members : [];
 
   var overlay = document.createElement('div');
   overlay.id = 'squad-confirm-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:#0f0f07;z-index:99999;overflow-y:auto;padding:24px;box-sizing:border-box';
+  overlay.style.cssText = 'position:fixed;inset:0;background:#0f0f07;z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box';
+
+  var membersHtml = members.length
+    ? members.map(function(m){ return '<div style="font-family:DM Sans,sans-serif;font-size:18px;font-weight:600;color:var(--txt);padding:10px 4px;border-bottom:1px solid var(--bdr)">'+m+'</div>'; }).join('')
+    : '<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim)">No members found</div>';
+
+  overlay.innerHTML = '<div style="width:100%;max-width:400px">'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:13px;color:var(--dim);letter-spacing:3px;text-align:center;margin-bottom:4px">'+(isFirst?'STARTING SQUAD':'NEXT SQUAD')+'</div>'
+    +'<div style="font-family:Bebas Neue,sans-serif;font-size:48px;color:var(--gold);letter-spacing:4px;text-align:center;margin-bottom:4px">SQUAD '+squadLabel+'</div>'
+    +'<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:2px;text-align:center;margin-bottom:16px">STATION '+(trapStation+1)+'</div>'
+    +'<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:14px;margin-bottom:16px">'+membersHtml+'</div>'
+    +'<div style="display:flex;gap:10px;margin-bottom:10px">'
+    +'<input id="sq-confirm-inp" class="inp" type="text" value="'+squadLabel+'" style="flex:1;font-size:24px;text-align:center;letter-spacing:2px" placeholder="Squad #">'
+    +'</div>'
+    +'<button onclick="confirmSquadAndScore()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:28px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:10px">▶ START SCORING</button>'
+    +'<button onclick="var ov=document.getElementById(\'squad-confirm-overlay\');if(ov)ov.remove();" style="display:block;width:100%;padding:14px;background:none;border:1px solid var(--gold);border-radius:10px;font-family:DM Mono,monospace;font-size:12px;color:var(--gold);cursor:pointer;letter-spacing:1px;margin-bottom:10px">← BACK — WRONG SQUAD</button>'
+    +'<button onclick="markStationComplete()" style="display:block;width:100%;padding:12px;background:none;border:1px solid var(--bdr);border-radius:10px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);cursor:pointer;letter-spacing:1px">✓ NO MORE SQUADS — STATION COMPLETE</button>'
+    +'</div>';
 
   overlay.dataset.squadIdx = (squadIdx !== undefined) ? squadIdx : '';
   document.body.appendChild(overlay);
 
-  function renderConfirmOverlay(){
-    var membersHtml = activeMembers.length
-      ? activeMembers.map(function(m, i){
-          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 4px;border-bottom:1px solid var(--bdr)">'
-            +'<span style="font-family:DM Sans,sans-serif;font-size:17px;font-weight:600;color:var(--txt)">'+m+'</span>'
-            +'<button data-remove="'+i+'" style="background:none;border:1px solid #c0392b;border-radius:6px;color:#c0392b;font-size:11px;padding:4px 10px;cursor:pointer;font-family:DM Mono,monospace;letter-spacing:1px">✕ REMOVE</button>'
-            +'</div>';
-        }).join('')
-      : '<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);padding:8px 0">No shooters — add below</div>';
+  // Update squad members when input changes
+  document.getElementById('sq-confirm-inp').addEventListener('input', function(){
+    var newLabel = this.value.trim().toUpperCase();
+    var sq2 = squads.find(function(s){ return String(s.label||s.num)===newLabel; });
+    var mem2 = sq2 ? sq2.members : [];
+    updateStationStatus(trapStation+1, newLabel, mem2, 'waiting');
+  });
 
-    overlay.innerHTML = '<div style="width:100%;max-width:400px;margin:0 auto">'
-      +'<div style="font-family:Bebas Neue,sans-serif;font-size:13px;color:var(--dim);letter-spacing:3px;text-align:center;margin-bottom:4px">'+(isFirst?'STARTING SQUAD':'NEXT SQUAD')+'</div>'
-      +'<div style="font-family:Bebas Neue,sans-serif;font-size:48px;color:var(--gold);letter-spacing:4px;text-align:center;margin-bottom:4px">SQUAD '+squadLabel+'</div>'
-      +'<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:2px;text-align:center;margin-bottom:16px">STATION '+(trapStation+1)+'</div>'
-      +'<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:14px;margin-bottom:10px">'+membersHtml+'</div>'
-      +'<div style="display:flex;gap:8px;margin-bottom:16px">'
-      +'<input id="sq-add-name" class="inp" type="text" placeholder="Add shooter name…" style="flex:1;font-size:14px">'
-      +'<button id="sq-add-btn" style="padding:10px 14px;background:var(--surf2);border:1px solid var(--hit);border-radius:8px;color:var(--hit);font-family:DM Mono,monospace;font-size:12px;cursor:pointer;white-space:nowrap;letter-spacing:1px">+ ADD</button>'
-      +'</div>'
-      +'<button id="sq-start-btn" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:28px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:10px">&#9654; START SCORING</button>'
-      +'<button id="sq-back-btn" style="display:block;width:100%;padding:14px;background:none;border:1px solid var(--gold);border-radius:10px;font-family:DM Mono,monospace;font-size:12px;color:var(--gold);cursor:pointer;letter-spacing:1px;margin-bottom:10px">&#8592; BACK — WRONG SQUAD</button>'
-      +'<button id="sq-done-btn" style="display:block;width:100%;padding:12px;background:none;border:1px solid var(--bdr);border-radius:10px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);cursor:pointer;letter-spacing:1px">&#10003; NO MORE SQUADS — STATION COMPLETE</button>'
-      +'</div>';
-
-    // Wire remove buttons
-    overlay.querySelectorAll('button[data-remove]').forEach(function(btn){
-      var idx = parseInt(btn.getAttribute('data-remove'));
-      var name = activeMembers[idx];
-      function doRemove(e){
-        if(e.cancelable) e.preventDefault();
-        if(!confirm('Remove '+name+' from this squad?')) return;
-        activeMembers.splice(idx,1);
-        renderConfirmOverlay();
-      }
-      btn.addEventListener('click', doRemove);
-      btn.addEventListener('touchstart', doRemove, {passive:false});
-    });
-
-    // Wire add button
-    var addBtn = document.getElementById('sq-add-btn');
-    var addInp = document.getElementById('sq-add-name');
-    function doAdd(e){ if(e.cancelable) e.preventDefault();
-      var name = addInp.value.trim();
-      if(!name) return;
-      if(!confirm('Add "'+name+'" to this squad?')) return;
-      activeMembers.push(name);
-      renderConfirmOverlay();
-    }
-    if(addBtn){ addBtn.addEventListener('click', doAdd); addBtn.addEventListener('touchstart', doAdd, {passive:false}); }
-    if(addInp){ addInp.addEventListener('keydown', function(e){ if(e.key==='Enter') doAdd(e); }); }
-
-    // Wire start scoring
-    var startBtn = document.getElementById('sq-start-btn');
-    function doStart(e){ if(e.cancelable) e.preventDefault(); confirmSquadAndScore(squadLabel, activeMembers); }
-    if(startBtn){ startBtn.addEventListener('click', doStart); startBtn.addEventListener('touchstart', doStart, {passive:false}); }
-
-    // Wire back
-    var backBtn = document.getElementById('sq-back-btn');
-    function doBack(e){ if(e.cancelable) e.preventDefault(); overlay.remove(); }
-    if(backBtn){ backBtn.addEventListener('click', doBack); backBtn.addEventListener('touchstart', doBack, {passive:false}); }
-
-    // Wire station complete
-    var doneBtn = document.getElementById('sq-done-btn');
-    function doDone(e){ if(e.cancelable) e.preventDefault(); markStationComplete(); }
-    if(doneBtn){ doneBtn.addEventListener('click', doDone); doneBtn.addEventListener('touchstart', doDone, {passive:false}); }
-
-    // Update Firebase with waiting status
-    updateStationStatus(trapStation+1, squadLabel, activeMembers, 'waiting');
-  }
-
-  renderConfirmOverlay();
+  // Update Firebase with waiting status
+  updateStationStatus(trapStation+1, squadLabel, members, 'waiting');
 }
 
-function confirmSquadAndScore(labelArg, membersArg){
-  var label = labelArg ? String(labelArg).toUpperCase() : '';
+function confirmSquadAndScore(){
+  var inp = document.getElementById('sq-confirm-inp');
+  var label = inp ? inp.value.trim().toUpperCase() : '';
   if(!label){ toast('Enter squad number'); return; }
 
-  // Find squad in roster
+  // Find squad
   var squads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
   var sq = squads.find(function(s){ return String(s.label||s.num)===label; });
 
-  // Use the trapper-edited member list if provided, otherwise fall back to roster
-  var finalMembers = membersArg && membersArg.length ? membersArg : (sq ? sq.members : []);
-
-  if(!sq && (!membersArg || !membersArg.length)){
+  if(!sq){
     toast('Squad '+label+' not found — check number', '');
     return;
   }
 
   // Update Firebase — now scoring
-  updateStationStatus(trapStation+1, label, finalMembers, 'scoring');
+  updateStationStatus(trapStation+1, label, sq.members, 'scoring');
 
-  // Remove overlay
+  // Remove overlay and retrieve stored squad index
   var ov2 = document.getElementById('squad-confirm-overlay');
+  var storedIdx = ov2 ? parseInt(ov2.dataset.squadIdx, 10) : -1;
   if(ov2) ov2.remove();
 
-  // Always find index in S.squads — that's what startScoringSquad reads from
-  var storedIdx = S.squads.findIndex(function(s){ return String(s.label||s.num)===label; });
-  if(storedIdx < 0){
-    // Fall back to localStorage squads if S.squads not populated
+  // Fall back to finding by label if index not stored
+  if(isNaN(storedIdx) || storedIdx < 0){
     var allSquads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
     storedIdx = allSquads.findIndex(function(s){ return String(s.label||s.num)===label; });
-    // Sync into S.squads if needed
-    if(storedIdx >= 0 && !S.squads.length) S.squads = allSquads;
-  }
-
-  // If the trapper edited the member list, patch it into S.squads so scoring uses it
-  if(membersArg && membersArg.length && storedIdx >= 0 && S.squads[storedIdx]){
-    S.squads[storedIdx].members = finalMembers;
   }
 
   // Fully reset scoring state for fresh squad
   trapSquadIdx = storedIdx;
   trapMemberIdx = 0;
   trapScoredCount = 0;
-  // Only set trapAssignedSquad if the trapper was already in assigned mode.
-  // In unassigned mode (trapAssignedSquad is null/empty), keep it null so the
-  // post-scoring flow knows to return to the squad list rather than advance stations.
-  if(trapAssignedSquad) trapAssignedSquad = label;
+  trapAssignedSquad = label;
   window._pendingSquadIdx = undefined;
-  // Do NOT pre-set scoredSquadKeys here — it gets set in submitScores after scoring is done.
+  scoredSquadKeys[(label)+'_'+trapStation] = false;
 
   // Show who shoots first
   startScoringSquad(storedIdx, true);
@@ -5467,14 +5354,12 @@ function renderBoardTable(status, log, totalStations){
     return done;
   }
 
-  // Build station-trapper map (stations with trappers waiting or complete)
+  // Build station-trapper map (stations with trappers but no squad yet)
   var stationTrappers = {};
-  var stationStatus = {};
   Object.keys(status).forEach(function(trapKey){
     var s = status[trapKey];
     if(s && s.trapper && !s.currentSquad){
       stationTrappers[s.station||trapKey] = s.trapper;
-      stationStatus[s.station||trapKey] = s.status||'waiting';
     }
   });
 
@@ -5532,14 +5417,10 @@ function renderBoardTable(status, log, totalStations){
       +'</tr></thead><tbody>';
     var stNums = Object.keys(stationTrappers).sort(function(a,b){ return parseInt(a)-parseInt(b); });
     stNums.forEach(function(st){
-      var isDone = stationStatus[st] === 'complete';
-      var statusCell = isDone
-        ? '<td style="padding:8px 6px;font-size:10px;color:var(--hit)">&#10003; DONE</td>'
-        : '<td style="padding:8px 6px;font-size:10px;color:var(--hit)">&#9679; READY</td>';
       html += '<tr style="border-bottom:0.5px solid var(--bdr)">'
         +'<td style="padding:8px 6px;font-family:Bebas Neue,sans-serif;font-size:18px;color:var(--gold)">'+st+'</td>'
         +'<td style="padding:8px 6px;font-size:11px;color:var(--txt)">'+stationTrappers[st]+'</td>'
-        +statusCell
+        +'<td style="padding:8px 6px;font-size:10px;color:var(--hit)">&#9679; READY</td>'
         +'</tr>';
     });
     html += '</tbody></table></div>';
