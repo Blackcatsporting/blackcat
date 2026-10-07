@@ -2786,7 +2786,7 @@ function drawTrapperPick() {
             var state = snap.val();
             if(state && state.started){
               S.started=state.started; S.name=state.name; S.stations=state.stations;
-              S.birds=state.birds; S.stationBirds=state.stationBirds; S.shooters=state.shooters;
+              S.birds=state.birds||10; S.stationBirds=state.stationBirds||[]; S.shooters=state.shooters||[];
               S.eventType=state.eventType||'SC';
               if(state.club){ S.club=state.club; localStorage.setItem('ct_club_name', state.club); }
               db.ref(getKey()+'/ct_squads').once('value').then(function(snap2){
@@ -2890,6 +2890,37 @@ function getNextRotationSquad(currentSquad){
     }
   }
   return null;
+}
+
+function confirmTrapperStation(){
+  // Fresh pull from Firebase before starting — gets latest stationBirds, squads, and clears stale scored keys
+  var el = document.getElementById('tr-squad-list');
+  el.innerHTML = '<div style="text-align:center;padding:30px;font-family:DM Mono,monospace;font-size:12px;color:var(--dim);letter-spacing:1px">Loading...</div>';
+  scoredSquadKeys = {};
+  window._freshTrapperLogin = true;
+  try{ localStorage.removeItem('ct_scored_keys'); }catch(e){}
+  var key = localStorage.getItem('ct_event_key')||'DEFAULT';
+  if(db){
+    db.ref(key+'/ct_event_state').once('value').then(function(snap){
+      var state = snap.val();
+      if(state){
+        S.birds = state.birds || S.birds;
+        S.stationBirds = state.stationBirds || S.stationBirds || [];
+        S.stations = state.stations || S.stations;
+        S.shooters = state.shooters || S.shooters;
+        S.eventType = state.eventType || S.eventType;
+      }
+      db.ref(key+'/ct_squads').once('value').then(function(sq){
+        var v = sq.val();
+        if(v){ var arr=Array.isArray(v)?v:Object.values(v); localStorage.setItem('ct_squads',JSON.stringify(arr)); S.squads=arr; }
+        window._trapperStationConfirmed = true;
+        buildSquadList();
+      });
+    });
+  } else {
+    window._trapperStationConfirmed = true;
+    buildSquadList();
+  }
 }
 
 function buildSquadList() {
@@ -3018,7 +3049,7 @@ function buildSquadList() {
       // Show a confirm button — trapper hasn't explicitly selected their station yet
       el.innerHTML = '<div style="text-align:center;padding:30px">'
         + '<div style="font-family:DM Mono,monospace;font-size:12px;color:#555;letter-spacing:1px;margin-bottom:20px">SELECT YOUR STATION ABOVE THEN TAP:</div>'
-        + '<button onclick="window._trapperStationConfirmed=true;buildSquadList();" style="display:block;width:100%;padding:22px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:28px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; I\'M AT STATION '+(trapStation+1)+'</button>'
+        + '<button onclick="confirmTrapperStation();" style="display:block;width:100%;padding:22px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:28px;letter-spacing:2px;color:#fff;cursor:pointer">&#9658; I\'M AT STATION '+(trapStation+1)+'</button>'
         + '</div>';
       return;
     } else {
