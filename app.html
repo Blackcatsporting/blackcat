@@ -5022,60 +5022,107 @@ function showSquadConfirmation(squadLabel, isFirst, squadIdx){
   // Find squad members
   var squads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
   var sq = squads.find(function(s){ return String(s.label||s.num)===String(squadLabel); });
-  var members = sq ? sq.members : [];
+  // Working copy of members — trapper can add/remove before scoring starts
+  var activeMembers = sq ? sq.members.slice() : [];
 
   var overlay = document.createElement('div');
   overlay.id = 'squad-confirm-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:#0f0f07;z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box';
-
-  var membersHtml = members.length
-    ? members.map(function(m){ return '<div style="font-family:DM Sans,sans-serif;font-size:18px;font-weight:600;color:var(--txt);padding:10px 4px;border-bottom:1px solid var(--bdr)">'+m+'</div>'; }).join('')
-    : '<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim)">No members found</div>';
-
-  overlay.innerHTML = '<div style="width:100%;max-width:400px">'
-    +'<div style="font-family:Bebas Neue,sans-serif;font-size:13px;color:var(--dim);letter-spacing:3px;text-align:center;margin-bottom:4px">'+(isFirst?'STARTING SQUAD':'NEXT SQUAD')+'</div>'
-    +'<div style="font-family:Bebas Neue,sans-serif;font-size:48px;color:var(--gold);letter-spacing:4px;text-align:center;margin-bottom:4px">SQUAD '+squadLabel+'</div>'
-    +'<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:2px;text-align:center;margin-bottom:16px">STATION '+(trapStation+1)+'</div>'
-    +'<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:14px;margin-bottom:16px">'+membersHtml+'</div>'
-    +'<div style="display:flex;gap:10px;margin-bottom:10px">'
-    +'<input id="sq-confirm-inp" class="inp" type="text" value="'+squadLabel+'" style="flex:1;font-size:24px;text-align:center;letter-spacing:2px" placeholder="Squad #">'
-    +'</div>'
-    +'<button onclick="confirmSquadAndScore()" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:28px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:10px">▶ START SCORING</button>'
-    +'<button onclick="var ov=document.getElementById(\'squad-confirm-overlay\');if(ov)ov.remove();" style="display:block;width:100%;padding:14px;background:none;border:1px solid var(--gold);border-radius:10px;font-family:DM Mono,monospace;font-size:12px;color:var(--gold);cursor:pointer;letter-spacing:1px;margin-bottom:10px">← BACK — WRONG SQUAD</button>'
-    +'<button onclick="markStationComplete()" style="display:block;width:100%;padding:12px;background:none;border:1px solid var(--bdr);border-radius:10px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);cursor:pointer;letter-spacing:1px">✓ NO MORE SQUADS — STATION COMPLETE</button>'
-    +'</div>';
+  overlay.style.cssText = 'position:fixed;inset:0;background:#0f0f07;z-index:99999;overflow-y:auto;padding:24px;box-sizing:border-box';
 
   overlay.dataset.squadIdx = (squadIdx !== undefined) ? squadIdx : '';
   document.body.appendChild(overlay);
 
-  // Update squad members when input changes
-  document.getElementById('sq-confirm-inp').addEventListener('input', function(){
-    var newLabel = this.value.trim().toUpperCase();
-    var sq2 = squads.find(function(s){ return String(s.label||s.num)===newLabel; });
-    var mem2 = sq2 ? sq2.members : [];
-    updateStationStatus(trapStation+1, newLabel, mem2, 'waiting');
-  });
+  function renderConfirmOverlay(){
+    var membersHtml = activeMembers.length
+      ? activeMembers.map(function(m, i){
+          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 4px;border-bottom:1px solid var(--bdr)">'
+            +'<span style="font-family:DM Sans,sans-serif;font-size:17px;font-weight:600;color:var(--txt)">'+m+'</span>'
+            +'<button data-remove="'+i+'" style="background:none;border:1px solid #c0392b;border-radius:6px;color:#c0392b;font-size:11px;padding:4px 10px;cursor:pointer;font-family:DM Mono,monospace;letter-spacing:1px">✕ REMOVE</button>'
+            +'</div>';
+        }).join('')
+      : '<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);padding:8px 0">No shooters — add below</div>';
 
-  // Update Firebase with waiting status
-  updateStationStatus(trapStation+1, squadLabel, members, 'waiting');
+    overlay.innerHTML = '<div style="width:100%;max-width:400px;margin:0 auto">'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:13px;color:var(--dim);letter-spacing:3px;text-align:center;margin-bottom:4px">'+(isFirst?'STARTING SQUAD':'NEXT SQUAD')+'</div>'
+      +'<div style="font-family:Bebas Neue,sans-serif;font-size:48px;color:var(--gold);letter-spacing:4px;text-align:center;margin-bottom:4px">SQUAD '+squadLabel+'</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--dim);letter-spacing:2px;text-align:center;margin-bottom:16px">STATION '+(trapStation+1)+'</div>'
+      +'<div style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:14px;margin-bottom:10px">'+membersHtml+'</div>'
+      +'<div style="display:flex;gap:8px;margin-bottom:16px">'
+      +'<input id="sq-add-name" class="inp" type="text" placeholder="Add shooter name…" style="flex:1;font-size:14px">'
+      +'<button id="sq-add-btn" style="padding:10px 14px;background:var(--surf2);border:1px solid var(--hit);border-radius:8px;color:var(--hit);font-family:DM Mono,monospace;font-size:12px;cursor:pointer;white-space:nowrap;letter-spacing:1px">+ ADD</button>'
+      +'</div>'
+      +'<button id="sq-start-btn" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:28px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:10px">&#9654; START SCORING</button>'
+      +'<button id="sq-back-btn" style="display:block;width:100%;padding:14px;background:none;border:1px solid var(--gold);border-radius:10px;font-family:DM Mono,monospace;font-size:12px;color:var(--gold);cursor:pointer;letter-spacing:1px;margin-bottom:10px">&#8592; BACK — WRONG SQUAD</button>'
+      +'<button id="sq-done-btn" style="display:block;width:100%;padding:12px;background:none;border:1px solid var(--bdr);border-radius:10px;font-family:DM Mono,monospace;font-size:11px;color:var(--dim);cursor:pointer;letter-spacing:1px">&#10003; NO MORE SQUADS — STATION COMPLETE</button>'
+      +'</div>';
+
+    // Wire remove buttons
+    overlay.querySelectorAll('button[data-remove]').forEach(function(btn){
+      var idx = parseInt(btn.getAttribute('data-remove'));
+      var name = activeMembers[idx];
+      function doRemove(e){
+        if(e.cancelable) e.preventDefault();
+        if(!confirm('Remove '+name+' from this squad?')) return;
+        activeMembers.splice(idx,1);
+        renderConfirmOverlay();
+      }
+      btn.addEventListener('click', doRemove);
+      btn.addEventListener('touchstart', doRemove, {passive:false});
+    });
+
+    // Wire add button
+    var addBtn = document.getElementById('sq-add-btn');
+    var addInp = document.getElementById('sq-add-name');
+    function doAdd(e){ if(e.cancelable) e.preventDefault();
+      var name = addInp.value.trim();
+      if(!name) return;
+      if(!confirm('Add "'+name+'" to this squad?')) return;
+      activeMembers.push(name);
+      renderConfirmOverlay();
+    }
+    if(addBtn){ addBtn.addEventListener('click', doAdd); addBtn.addEventListener('touchstart', doAdd, {passive:false}); }
+    if(addInp){ addInp.addEventListener('keydown', function(e){ if(e.key==='Enter') doAdd(e); }); }
+
+    // Wire start scoring
+    var startBtn = document.getElementById('sq-start-btn');
+    function doStart(e){ if(e.cancelable) e.preventDefault(); confirmSquadAndScore(squadLabel, activeMembers); }
+    if(startBtn){ startBtn.addEventListener('click', doStart); startBtn.addEventListener('touchstart', doStart, {passive:false}); }
+
+    // Wire back
+    var backBtn = document.getElementById('sq-back-btn');
+    function doBack(e){ if(e.cancelable) e.preventDefault(); overlay.remove(); }
+    if(backBtn){ backBtn.addEventListener('click', doBack); backBtn.addEventListener('touchstart', doBack, {passive:false}); }
+
+    // Wire station complete
+    var doneBtn = document.getElementById('sq-done-btn');
+    function doDone(e){ if(e.cancelable) e.preventDefault(); markStationComplete(); }
+    if(doneBtn){ doneBtn.addEventListener('click', doDone); doneBtn.addEventListener('touchstart', doDone, {passive:false}); }
+
+    // Update Firebase with waiting status
+    updateStationStatus(trapStation+1, squadLabel, activeMembers, 'waiting');
+  }
+
+  renderConfirmOverlay();
 }
 
-function confirmSquadAndScore(){
-  var inp = document.getElementById('sq-confirm-inp');
-  var label = inp ? inp.value.trim().toUpperCase() : '';
+function confirmSquadAndScore(labelArg, membersArg){
+  var label = labelArg ? String(labelArg).toUpperCase() : '';
   if(!label){ toast('Enter squad number'); return; }
 
-  // Find squad
+  // Find squad in roster
   var squads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
   var sq = squads.find(function(s){ return String(s.label||s.num)===label; });
 
-  if(!sq){
+  // Use the trapper-edited member list if provided, otherwise fall back to roster
+  var finalMembers = membersArg && membersArg.length ? membersArg : (sq ? sq.members : []);
+
+  if(!sq && (!membersArg || !membersArg.length)){
     toast('Squad '+label+' not found — check number', '');
     return;
   }
 
   // Update Firebase — now scoring
-  updateStationStatus(trapStation+1, label, sq.members, 'scoring');
+  updateStationStatus(trapStation+1, label, finalMembers, 'scoring');
 
   // Remove overlay
   var ov2 = document.getElementById('squad-confirm-overlay');
@@ -5089,6 +5136,11 @@ function confirmSquadAndScore(){
     storedIdx = allSquads.findIndex(function(s){ return String(s.label||s.num)===label; });
     // Sync into S.squads if needed
     if(storedIdx >= 0 && !S.squads.length) S.squads = allSquads;
+  }
+
+  // If the trapper edited the member list, patch it into S.squads so scoring uses it
+  if(membersArg && membersArg.length && storedIdx >= 0 && S.squads[storedIdx]){
+    S.squads[storedIdx].members = finalMembers;
   }
 
   // Fully reset scoring state for fresh squad
