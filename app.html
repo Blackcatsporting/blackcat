@@ -2832,6 +2832,13 @@ function drawTrapperPick() {
 
   updateArrivalNote();
 
+  // Clear any stale scored keys from a previous session
+  scoredSquadKeys = {};
+  window._freshTrapperLogin = true;
+  try{ localStorage.removeItem('ct_scored_keys'); }catch(e){}
+  try{ localStorage.removeItem('ct_completed_stations'); }catch(e){}
+  window._trapperStationConfirmed = false;
+
   var trapHdr = document.getElementById('tr-trapper-name');
   if(trapHdr) trapHdr.textContent = trapperName ? '' + trapperName : 'Trapper';
   trShow('squads');
@@ -2889,13 +2896,15 @@ function buildSquadList() {
   var el = document.getElementById('tr-squad-list');
   el.innerHTML = '';
 
-  // Restore scored keys from localStorage in case they were wiped by a listener
-  if(!trapAssignedSquad && Object.keys(scoredSquadKeys).length === 0){
+  // Restore scored keys from localStorage — but NOT if we just cleared them on fresh login
+  if(!trapAssignedSquad && Object.keys(scoredSquadKeys).length === 0 && !window._freshTrapperLogin){
     try{
       var saved = localStorage.getItem('ct_scored_keys');
       if(saved) scoredSquadKeys = JSON.parse(saved);
     }catch(e){}
   }
+  // Clear the fresh-login flag after first buildSquadList
+  window._freshTrapperLogin = false;
 
   // Use S.squads as primary source so indices stay in sync with startScoringSquad
   var squads = S.squads.length ? S.squads : JSON.parse(localStorage.getItem('ct_squads')||'[]');
@@ -3037,11 +3046,18 @@ function buildSquadList() {
       });
       var ordered = home.concat(away);
       var nextSq = ordered[0];
+      var nextLabel = String(nextSq.label||nextSq.num).toUpperCase();
+      var nextSess = nextSq.session||'';
       var nextIdx = -1;
       S.squads.forEach(function(ssq, si){
-        if(String(ssq.label||ssq.num)===String(nextSq.label||nextSq.num) && (ssq.session||'')===(nextSq.session||'')) nextIdx = si;
+        if(nextIdx===-1 && String(ssq.label||ssq.num).toUpperCase()===nextLabel && (ssq.session||'')===nextSess) nextIdx = si;
       });
-      if(nextIdx === -1) nextIdx = squads.indexOf(nextSq);
+      // Fallback: match by label only (ignore session)
+      if(nextIdx === -1){
+        S.squads.forEach(function(ssq, si){
+          if(nextIdx===-1 && String(ssq.label||ssq.num).toUpperCase()===nextLabel) nextIdx = si;
+        });
+      }
       showSquadConfirmation(nextSq.label||nextSq.num, true, nextIdx);
       return;
     }
@@ -4497,7 +4513,9 @@ function trapSubmit() {
   trapScoredCount++;
 
   // Check if entire squad is done at this station
-  var squadDone = trapScoredCount >= (S.squads[trapSquadIdx] ? S.squads[trapSquadIdx].members.length : 1);
+  var _currentSquad = S.squads[trapSquadIdx];
+  var squadDone = _currentSquad ? (trapScoredCount >= _currentSquad.members.length) : false;
+  if(!_currentSquad){ toast('Squad data lost — please re-select squad', ''); return; }
   if(squadDone){
     var sq = S.squads[trapSquadIdx];
     var sqKey = String(sq.label||sq.num).toUpperCase()+'_'+trapStation;
@@ -5148,11 +5166,11 @@ function confirmSquadAndScore(labelArg, membersArg){
       storedIdx = S.squads.findIndex(function(s){ return String(s.label||s.num).toUpperCase()===label; });
     }
   }
-  // Last resort: synthesize a squad entry so startScoringSquad never gets undefined
-  if(storedIdx < 0 && finalMembers.length){
-    var syntheticSquad = {label: label, num: parseInt(label)||label, members: finalMembers, session: ''};
-    S.squads.push(syntheticSquad);
-    storedIdx = S.squads.length - 1;
+  // Last resort: if still not found, try matching by string equality ignoring case on num field
+  if(storedIdx < 0){
+    S.squads.forEach(function(s, i){
+      if(storedIdx < 0 && String(s.num).toUpperCase()===label) storedIdx = i;
+    });
   }
 
   // If the trapper edited the member list, patch it into S.squads so scoring uses it
