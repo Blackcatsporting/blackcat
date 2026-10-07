@@ -5415,12 +5415,14 @@ function renderBoardTable(status, log, totalStations){
     return done;
   }
 
-  // Build station-trapper map (stations with trappers but no squad yet)
+  // Build station-trapper map (stations with trappers waiting or complete)
   var stationTrappers = {};
+  var stationStatus = {};
   Object.keys(status).forEach(function(trapKey){
     var s = status[trapKey];
     if(s && s.trapper && !s.currentSquad){
       stationTrappers[s.station||trapKey] = s.trapper;
+      stationStatus[s.station||trapKey] = s.status||'waiting';
     }
   });
 
@@ -5478,10 +5480,14 @@ function renderBoardTable(status, log, totalStations){
       +'</tr></thead><tbody>';
     var stNums = Object.keys(stationTrappers).sort(function(a,b){ return parseInt(a)-parseInt(b); });
     stNums.forEach(function(st){
+      var isDone = stationStatus[st] === 'complete';
+      var statusCell = isDone
+        ? '<td style="padding:8px 6px;font-size:10px;color:var(--hit)">&#10003; DONE</td>'
+        : '<td style="padding:8px 6px;font-size:10px;color:var(--hit)">&#9679; READY</td>';
       html += '<tr style="border-bottom:0.5px solid var(--bdr)">'
         +'<td style="padding:8px 6px;font-family:Bebas Neue,sans-serif;font-size:18px;color:var(--gold)">'+st+'</td>'
         +'<td style="padding:8px 6px;font-size:11px;color:var(--txt)">'+stationTrappers[st]+'</td>'
-        +'<td style="padding:8px 6px;font-size:10px;color:var(--hit)">&#9679; READY</td>'
+        +statusCell
         +'</tr>';
     });
     html += '</tbody></table></div>';
