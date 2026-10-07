@@ -435,7 +435,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
     <!-- Station bar -->
     <div id="tr-station-bar" style="background:var(--surf);border:2px solid var(--org);border-radius:10px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px">
       <div id="tr-station-label" style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--org);letter-spacing:2px;white-space:nowrap">MY STATION</div>
-      <select id="tr-st" class="inp" style="margin-bottom:0;flex:1" onchange="trapStation=parseInt(this.value);scoredSquadKeys={};try{localStorage.removeItem('ct_scored_keys');}catch(e){};window._trapperStationConfirmed=true;buildSquadList()"></select>
+      <select id="tr-st" class="inp" style="margin-bottom:0;flex:1" onchange="trapStation=parseInt(this.value);scoredSquadKeys={};try{localStorage.removeItem('ct_scored_keys');}catch(e){};try{localStorage.removeItem('ct_completed_stations');}catch(e){};window._trapperStationConfirmed=true;buildSquadList()"></select>
     </div>
     <!-- Session filter -->
     <div id="tr-session-bar" style="background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:10px 16px;margin-bottom:10px">
@@ -2217,7 +2217,7 @@ function trapSubmitNumeric(){
   var squadDone = trapScoredCount >= (S.squads[trapSquadIdx] ? S.squads[trapSquadIdx].members.length : 1);
   if(squadDone){
     var sq = S.squads[trapSquadIdx];
-    var sqKey = (sq.label||sq.num)+'_'+trapStation;
+    var sqKey = String(sq.label||sq.num).toUpperCase()+'_'+trapStation;
     scoredSquadKeys[sqKey] = true;
     var isAssigned = trapAssignedSquad !== null && trapAssignedSquad !== undefined && trapAssignedSquad !== '';
     trapSquadIdx = -1;
@@ -2819,6 +2819,7 @@ function drawTrapperPick() {
       trapStation = parseInt(this.value);
       scoredSquadKeys = {};
       try{ localStorage.removeItem('ct_scored_keys'); }catch(e){}
+      try{ localStorage.removeItem('ct_completed_stations'); }catch(e){}
       updateArrivalNote();
       if(trapperName) updateStationStatus(trapStation+1, null, [], 'waiting');
       window._trapperStationConfirmed = true;
@@ -2859,7 +2860,7 @@ function getNextRotationSquad(currentSquad){
       return String(sq.label||sq.num).toUpperCase() === baseNum+'B';
     });
     if(bSquad){
-      var bKey = (bSquad.label||bSquad.num)+'_'+trapStation;
+      var bKey = String(bSquad.label||bSquad.num).toUpperCase()+'_'+trapStation;
       if(!scoredSquadKeys[bKey]) return bSquad;
     }
   }
@@ -2877,7 +2878,7 @@ function getNextRotationSquad(currentSquad){
       return String(s.label||s.num).toUpperCase() === candidate.toUpperCase();
     });
     if(sq){
-      var sqKey = (sq.label||sq.num)+'_'+trapStation;
+      var sqKey = String(sq.label||sq.num).toUpperCase()+'_'+trapStation;
       if(!scoredSquadKeys[sqKey]) return sq;
     }
   }
@@ -2981,19 +2982,29 @@ function buildSquadList() {
   if(!trapAssignedSquad){
     var allUnassigned = filtered.slice(); // all squads before scoring filter
     filtered = filtered.filter(function(sq){
-      var sqKey = (sq.label||sq.num)+'_'+trapStation;
+      var sqKey = String(sq.label||sq.num).toUpperCase()+'_'+trapStation;
       return !scoredSquadKeys[sqKey];
     });
 
     if(filtered.length === 0){
-      // All squads done at this station
+      // All squads done at this station — mark it and check if all stations done
       updateStationStatus(trapStation+1, null, [], 'complete');
-      var nextSt = (trapStation + 1) % S.stations;
+      // Track completed stations in localStorage
+      var completedStationsKey = 'ct_completed_stations';
+      var completedStations = {};
+      try{ var cs = localStorage.getItem(completedStationsKey); if(cs) completedStations = JSON.parse(cs); }catch(e){}
+      completedStations[trapStation] = true;
+      try{ localStorage.setItem(completedStationsKey, JSON.stringify(completedStations)); }catch(e){}
+      var totalStations = S.stations || 1;
+      var allStationsDone = Object.keys(completedStations).length >= totalStations;
+      var nextSt = (trapStation + 1) % totalStations;
+      var moveBtn = allStationsDone ? '' :
+        '<button onclick="trapStation='+nextSt+';scoredSquadKeys={};try{localStorage.removeItem(\'ct_scored_keys\');}catch(e){};buildSquadList();" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:12px">&#9658; MOVE TO STATION '+(nextSt+1)+'</button>';
       el.innerHTML = '<div style="text-align:center;padding:30px">'
         + '<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:10px">&#10003; STATION '+(trapStation+1)+' COMPLETE</div>'
-        + '<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);margin-bottom:30px">All squads scored at this station</div>'
-        + '<button onclick="trapStation='+nextSt+';scoredSquadKeys={};buildSquadList();" style="display:block;width:100%;padding:18px;background:var(--org);border:none;border-radius:10px;font-family:Bebas Neue,sans-serif;font-size:24px;letter-spacing:2px;color:#fff;cursor:pointer;margin-bottom:12px">&#9658; MOVE TO STATION '+(nextSt+1)+'</button>'
-        + '<button onclick="switchToTrapper()" style="display:block;width:100%;padding:14px;background:none;border:1px solid var(--bdr);border-radius:8px;color:var(--dim);font-family:DM Mono,monospace;font-size:11px;letter-spacing:1px;cursor:pointer">&#8617; SIGN OUT</button>'
+        + '<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);margin-bottom:30px">'+(allStationsDone ? 'All stations complete — great shoot!' : 'All squads scored at this station')+'</div>'
+        + moveBtn
+        + '<button onclick="try{localStorage.removeItem(\'ct_completed_stations\');}catch(e){}switchToTrapper();" style="display:block;width:100%;padding:14px;background:none;border:1px solid var(--bdr);border-radius:8px;color:var(--dim);font-family:DM Mono,monospace;font-size:11px;letter-spacing:1px;cursor:pointer">&#8617; SIGN OUT</button>'
         + '</div>';
       return;
     }
@@ -3091,7 +3102,7 @@ function buildSquadList() {
     });
     if(realIdx === -1) realIdx = squads.indexOf(sq);
 
-    var sqKey = (sq.label||sq.num) + '_' + trapStation;
+    var sqKey = String(sq.label||sq.num).toUpperCase()+'_'+trapStation;
     if(scoredSquadKeys[sqKey]) return;
     if(renderedSqKeys[sqKey]) return;
     renderedSqKeys[sqKey] = true;
@@ -4217,7 +4228,7 @@ function scoreCurrentMember() {
   if (trapScoredCount >= members.length) {
     trapScoredCount = 0;
 
-    var sqKey = (squad.label||squad.num) + '_' + trapStation;
+    var sqKey = String(squad.label||squad.num).toUpperCase()+'_'+trapStation;
     scoredSquadKeys[sqKey] = true;
 
     var isAssigned = trapAssignedSquad !== null && trapAssignedSquad !== undefined && trapAssignedSquad !== '';
@@ -4496,7 +4507,7 @@ function trapSubmit() {
   var squadDone = trapScoredCount >= (S.squads[trapSquadIdx] ? S.squads[trapSquadIdx].members.length : 1);
   if(squadDone){
     var sq = S.squads[trapSquadIdx];
-    var sqKey = (sq.label||sq.num)+'_'+trapStation;
+    var sqKey = String(sq.label||sq.num).toUpperCase()+'_'+trapStation;
     scoredSquadKeys[sqKey] = true;
     try{ localStorage.setItem('ct_scored_keys', JSON.stringify(scoredSquadKeys)); }catch(e){}
     var isAssigned = trapAssignedSquad !== null && trapAssignedSquad !== undefined && trapAssignedSquad !== '';
