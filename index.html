@@ -1356,7 +1356,8 @@ function parse5StandSquads(raw) { // v2
 }
 
 function parseSquads(raw) {
-  if(S.eventType==='5STAND') return parse5StandSquads(raw);
+  // Auto-detect 5 Stand format from Scorechaser (contains "— 5 STAND" or "- 5 STAND")
+  if(S.eventType==='5STAND' || /[—\-]\s*5\s*STAND/i.test(raw)) return parse5StandSquads(raw);
 
   var squads = [];
   var sessionLabel = '';
