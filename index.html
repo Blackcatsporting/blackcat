@@ -1340,15 +1340,6 @@ function parse5StandSquads(raw) { // v3
   }
   flushSquad();return squads;
 }
-
-function timeToMinutes(label) {
-  var m=(label||'').match(/(\d+):(\d+)\s*(AM|PM)/i);
-  if(!m) return 9999;
-  var h=parseInt(m[1]),min=parseInt(m[2]),pm=m[3].toUpperCase()==='PM';
-  if(pm&&h!==12)h+=12;
-  if(!pm&&h===12)h=0;
-  return h*60+min;
-}
 function parseSquads(raw) {
   // Auto-detect 5 Stand format from Scorechaser
   // Match "5 STAND" anywhere in the raw text, with any dash/separator or none
@@ -2576,6 +2567,7 @@ function drawSquads(){
     sessionMap[sess].push(sq);
   });
 
+  sessions.sort(function(a,b){ return timeToMinutes(a)-timeToMinutes(b); });
   sessions.forEach(function(sess){
 
     var sessHdr=document.createElement('div');
@@ -4929,9 +4921,7 @@ function drawRotationBoard(){
 
   Object.keys(sessionMap).forEach(function(sess){
     sessionMap[sess].sort(function(a, b){
-      var numA = parseInt(a.label)||0, numB = parseInt(b.label)||0;
-      if(numA !== numB) return numA - numB;
-      return (a.label||'').localeCompare(b.label||'');
+      return timeToMinutes(a.label) - timeToMinutes(b.label);
     });
   });
 
