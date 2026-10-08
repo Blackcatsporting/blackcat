@@ -188,7 +188,7 @@ body{background:#000;color:var(--txt);font-family:'DM Sans',sans-serif;min-heigh
 </style>
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
 <link rel="apple-touch-icon" sizes="512x512" href="icon.png">
-<!-- build:1778011625 -->
+<!-- build:1728403200 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -1312,7 +1312,7 @@ function parseSquadSheet(raw){
   return result;
 }
 
-function parse5StandSquads(raw) {
+function parse5StandSquads(raw) { // v2
   // Format: "8:20 AM Sun — 5 STAND\n1Joe SmithJane Doe...\n9:00 AM..."
   // Names are concatenated with no separator — split on capital letter starting a new word
   var squads = [];
@@ -1428,6 +1428,23 @@ function parseSquads(raw) {
     }
 
     if(line.length > 1){
+      // 5 Stand: handle "1Joe SmithDwight Davis" — squad number jammed against names, no space
+      if(S.eventType==='5STAND'){
+        var m5 = line.match(/^(\d+[AB]?)([A-Z].*)/);
+        if(m5){
+          // Flush previous squad
+          if(currentMembers.length > 0){
+            squads.push({label:String(currentLabel||sessionLabel||autoNum), session:sessionLabel, num:autoNum, members:currentMembers.slice()});
+            currentMembers = []; autoNum++;
+          }
+          currentLabel = sessionLabel || String(autoNum);
+          // Split concatenated names
+          var namesRaw = m5[2];
+          var split = namesRaw.replace(/([a-z,\.])([A-Z])/g,'$1|$2').replace(/([A-Z])([A-Z][a-z])/g,'$1|$2').split('|');
+          split.forEach(function(n){ n=n.trim().replace(/,$/,''); if(n.length>1) currentMembers.push(n); });
+          return;
+        }
+      }
       if(currentLabel === null) currentLabel = autoNum;
       // Also split by 2+ spaces in case names are on same line without squad number
       var parts = line.replace(/,/g,'').trim().split(/\s{2,}/);
@@ -1597,8 +1614,6 @@ function importPaste(){
   var raw = document.getElementById('paste-box').value;
   if(!raw.trim()){ toast('Nothing pasted!'); return; }
   var parsedSquads = importFormat==='squadsheet' ? parseSquadSheet(raw) : parseSquads(raw);
-  // DEBUG — remove after testing
-  alert('Parsed '+parsedSquads.length+' squads.\n'+parsedSquads.slice(0,4).map(function(sq){return sq.label+': '+sq.members.length+' members ('+sq.members[0]+')';}).join('\n'));
   var added = 0;
 
   if(parsedSquads.length > 0){
@@ -6656,6 +6671,15 @@ setInterval(function(){
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script>
+    // Force reload if cached version is older than this build
+    (function(){
+      var BUILD = '1728403200';
+      var stored = localStorage.getItem('bc_build');
+      if(stored !== BUILD){
+        localStorage.setItem('bc_build', BUILD);
+        if(stored !== null){ window.location.reload(true); }
+      }
+    })();
     var db = null;
     function initFirebase(){
       if(typeof firebase === 'undefined') return;
