@@ -1356,8 +1356,9 @@ function parse5StandSquads(raw) { // v2
 }
 
 function parseSquads(raw) {
-  // Auto-detect 5 Stand format from Scorechaser (contains "— 5 STAND" or "- 5 STAND")
-  if(S.eventType==='5STAND' || /[—\-]\s*5\s*STAND/i.test(raw)) return parse5StandSquads(raw);
+  // Auto-detect 5 Stand format from Scorechaser
+  // Match "5 STAND" anywhere in the raw text, with any dash/separator or none
+  if(S.eventType==='5STAND' || /5.{0,4}STAND/i.test(raw)) return parse5StandSquads(raw);
 
   var squads = [];
   var sessionLabel = '';
@@ -1618,24 +1619,16 @@ function importPaste(){
   var added = 0;
 
   if(parsedSquads.length > 0){
-    // Merge with existing squads — add new, don't overwrite existing
-    if(!S.squads) S.squads = [];
+    // Replace squads entirely — wipe stale localStorage and in-memory data
+    // This prevents old cached squads from a previous import from bleeding in
+    S.squads = [];
     parsedSquads.forEach(function(sq){
-      var existing = S.squads.find(function(s){ return String(s.label||s.num) === String(sq.label||sq.num); });
-      if(existing){
-        // Add any new members to existing squad
-        sq.members.forEach(function(n){
-          if(existing.members.indexOf(n)===-1){ existing.members.push(n); }
-        });
-      } else {
-        S.squads.push(sq);
-      }
+      S.squads.push(sq);
       sq.members.forEach(function(n){
         if(S.shooters.indexOf(n)===-1){ S.shooters.push(n); added++; }
       });
     });
-    // Sort squads by number
-    S.squads.sort(function(a,b){ return (parseInt(a.label||a.num)||0)-(parseInt(b.label||b.num)||0); });
+    // Preserve insertion order — do NOT sort by parseInt(label) which breaks time-based labels
     localStorage.setItem('ct_squads', JSON.stringify(S.squads));
     toast('Added '+added+' shooters in '+parsedSquads.length+' squads — total: '+S.squads.length+' squads','green');
   } else {
@@ -2382,14 +2375,11 @@ function startRound(){
 
   if(!S.shooters.length && !S.squads.length){toast('Add shooters or build squads first');return;}
 
-  var savedSquads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
-  if(savedSquads.length > 0){
-    // Merge saved squads with in-memory squads — covers multi-paste scenario
-    savedSquads.forEach(function(sq){
-      var exists = S.squads.find(function(s){ return String(s.label||s.num)===String(sq.label||sq.num); });
-      if(!exists) S.squads.push(sq);
-    });
-    S.squads.sort(function(a,b){ return (parseInt(a.label||a.num)||0)-(parseInt(b.label||b.num)||0); });
+  // If S.squads is empty (e.g. page was refreshed after import), restore from localStorage
+  // But do NOT merge if S.squads already has data — prevents stale old imports from bleeding in
+  if(!S.squads || S.squads.length === 0){
+    var savedSquads = JSON.parse(localStorage.getItem('ct_squads')||'[]');
+    if(savedSquads.length > 0){ S.squads = savedSquads; }
   }
 
   S.name=n.toUpperCase();
