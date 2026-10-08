@@ -1312,49 +1312,34 @@ function parseSquadSheet(raw){
   return result;
 }
 
-function parse5StandSquads(raw) { // v2
-  // Format: "8:20 AM Sun — 5 STAND\n1Joe SmithJane Doe...\n9:00 AM..."
-  // Names are concatenated with no separator — split on capital letter starting a new word
-  var squads = [];
-  var autoNum = 1;
-  raw = raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-  var sessionLabel = '';
-  var lines = raw.split('\n');
-  for(var i=0;i<lines.length;i++){
-    var line = lines[i].trim();
-    if(!line || line==='No Entrants') continue;
-    // Time slot header line
-    if(/\d+:\d+\s*(AM|PM)/i.test(line)){
-      sessionLabel = line;
-      continue;
-    }
-    // Squad line: starts with digit(s) then immediately names concatenated
-    // e.g. "1Joe CioccoDwight DavisJohn GriebFrank SestitoJean Waliky"
-    // or "1GARY BODAKDavid Donatelli..." (all caps names)
-    var squadMatch = line.match(/^(\d+[AB]?)(.*)/);
-    if(squadMatch){
-      var namesRaw = squadMatch[2].trim();
-      if(!namesRaw) continue;
-      // Split concatenated names at boundaries:
-      // Pass 1: lowercase/punct -> uppercase  (e.g. "SmithJohn" -> "Smith|John")
-      // Pass 2: ALLCAPS -> Capitalized         (e.g. "BODAKDavid" -> "BODAK|David")
-      var members = [];
-      var split = namesRaw
-        .replace(/([a-z,\.])([A-Z])/g, '$1|$2')
-        .replace(/([A-Z])([A-Z][a-z])/g, '$1|$2')
-        .split('|');
-      split.forEach(function(n){
-        n = n.trim().replace(/,$/, '');
-        if(n.length > 1) members.push(n);
-      });
-      var label = sessionLabel || String(autoNum);
-      squads.push({label:label, session:sessionLabel, num:autoNum, members:members});
+function parse5StandSquads(raw) { // v3
+  var squads=[];var autoNum=1;
+  raw=raw.replace(/\r\n/g,"\n").replace(/\r/g,"\n");
+  var sessionLabel="";var currentMembers=null;
+  var lines=raw.split("\n");
+  function splitConcatNames(n){
+    var p=n.replace(/([a-z,\.])([A-Z])/g,"$1|$2").replace(/([A-Z])([A-Z][a-z])/g,"$1|$2").split("|");
+    var r=[];p.forEach(function(x){x=x.trim().replace(/,$/,"");if(x.length>1)r.push(x);});return r;
+  }
+  function flushSquad(){
+    if(currentMembers!==null&&currentMembers.length>0){
+      var lb=sessionLabel||String(autoNum);
+      squads.push({label:lb,session:sessionLabel,num:autoNum,members:currentMembers});
       autoNum++;
     }
+    currentMembers=null;
   }
-  return squads;
+  for(var i=0;i<lines.length;i++){
+    var line=lines[i].trim();
+    if(!line||line==="No Entrants")continue;
+    if(/\d+:\d+\s*(AM|PM)/i.test(line)){flushSquad();sessionLabel=line;continue;}
+    if(/^(\d+[AB]?)$/.test(line)){flushSquad();currentMembers=[];continue;}
+    var m=line.match(/^(\d+[AB]?)([A-Z].*)/);
+    if(m){flushSquad();currentMembers=splitConcatNames(m[2].trim());var lb=sessionLabel||String(autoNum);squads.push({label:lb,session:sessionLabel,num:autoNum,members:currentMembers});autoNum++;currentMembers=null;continue;}
+    if(currentMembers!==null){var nm=line.replace(/,$/,"").trim();if(nm.length>1)currentMembers.push(nm);}
+  }
+  flushSquad();return squads;
 }
-
 function parseSquads(raw) {
   // Auto-detect 5 Stand format from Scorechaser
   // Match "5 STAND" anywhere in the raw text, with any dash/separator or none
