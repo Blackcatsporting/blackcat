@@ -4935,6 +4935,7 @@ function drawRotationBoard(){
   });
 
   var html = '';
+  sessions.sort(function(a,b){ return timeToMinutes(a)-timeToMinutes(b); });
   sessions.forEach(function(sess){
     html += '<div style="background:var(--surf2);border:1px solid var(--org);border-radius:8px;padding:8px 14px;margin:12px 0 8px;text-align:center;font-family:Bebas Neue,sans-serif;font-size:16px;letter-spacing:2px;color:var(--org)">&#128336; '+sess+'</div>';
     sessionMap[sess].forEach(function(sq){
