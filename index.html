@@ -5381,7 +5381,17 @@ function drawBoard(){
       +'<th style="padding:10px 8px;text-align:left;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:11px;width:120px;letter-spacing:1px">STATUS</th>'
       +'</tr></thead><tbody>';
 
-    var sorted = allSquads.slice().sort(function(a,b){ return (parseInt(a.label||a.num)||0)-(parseInt(b.label||b.num)||0); });
+  // Group squads by session, sort sessions by time
+  var sessionOrder = [];
+  var sessionSquads = {};
+  allSquads.forEach(function(sq){
+    var sess = sq.session || 'Main Event';
+    if(!sessionSquads[sess]){ sessionSquads[sess]=[]; sessionOrder.push(sess); }
+    sessionSquads[sess].push(sq);
+  });
+  sessionOrder.sort(function(a,b){ return timeToMinutes(a)-timeToMinutes(b); });
+  var sorted = [];
+  sessionOrder.forEach(function(sess{) sessionSquads[sess].forEach(function(sq){ sorted.push(sq); }); });
     sorted.forEach(function(sq){
       var label = String(sq.label||sq.num);
       var info = squadLoc[label]||{};
@@ -5603,7 +5613,17 @@ function renderBoardTable(status, log, totalStations){
     +'<th style="padding:10px 6px;text-align:left;border-bottom:1px solid var(--bdr);font-weight:500;color:var(--dim);font-size:10px;width:100px;letter-spacing:1px">STATUS</th>'
     +'</tr></thead><tbody>';
 
-  var sorted = allSquads.slice().sort(function(a,b){ return (parseInt(a.label||a.num)||0)-(parseInt(b.label||b.num)||0); });
+  // Group squads by session, sort sessions by time
+  var sessionOrder = [];
+  var sessionSquads = {};
+  allSquads.forEach(function(sq){
+    var sess = sq.session || 'Main Event';
+    if(!sessionSquads[sess]){ sessionSquads[sess]=[]; sessionOrder.push(sess); }
+    sessionSquads[sess].push(sq);
+  });
+  sessionOrder.sort(function(a,b){ return timeToMinutes(a)-timeToMinutes(b); });
+  var sorted = [];
+  sessionOrder.forEach(function(sess{) sessionSquads[sess].forEach(function(sq){ sorted.push(sq); }); });
   sorted.forEach(function(sq){
     var label = String(sq.label||sq.num);
     var infos = squadLoc[label]||[];
