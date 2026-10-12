@@ -1340,6 +1340,15 @@ function parse5StandSquads(raw) { // v3
   }
   flushSquad();return squads;
 }
+
+function timeToMinutes(label) {
+  var m=(label||'').match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if(!m) return 9999;
+  var h=parseInt(m[1]),min=parseInt(m[2]),pm=m[3].toUpperCase()==='PM';
+  if(pm&&h!==12)h+=12;
+  if(!pm&&h===12)h=0;
+  return h*60+min;
+}
 function parseSquads(raw) {
   // Auto-detect 5 Stand format from Scorechaser
   // Match "5 STAND" anywhere in the raw text, with any dash/separator or none
