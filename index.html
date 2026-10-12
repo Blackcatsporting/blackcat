@@ -5391,7 +5391,7 @@ function drawBoard(){
   });
   sessionOrder.sort(function(a,b){ return timeToMinutes(a)-timeToMinutes(b); });
   var sorted = [];
-  sessionOrder.forEach(function(sess{) sessionSquads[sess].forEach(function(sq){ sorted.push(sq); }); });
+  sessionOrder.forEach(function(sess){ sessionSquads[sess].forEach(function(sq){ sorted.push(sq); }); });
     sorted.forEach(function(sq){
       var label = String(sq.label||sq.num);
       var info = squadLoc[label]||{};
@@ -5623,7 +5623,7 @@ function renderBoardTable(status, log, totalStations){
   });
   sessionOrder.sort(function(a,b){ return timeToMinutes(a)-timeToMinutes(b); });
   var sorted = [];
-  sessionOrder.forEach(function(sess{) sessionSquads[sess].forEach(function(sq){ sorted.push(sq); }); });
+  sessionOrder.forEach(function(sess){ sessionSquads[sess].forEach(function(sq){ sorted.push(sq); }); });
   sorted.forEach(function(sq){
     var label = String(sq.label||sq.num);
     var infos = squadLoc[label]||[];
