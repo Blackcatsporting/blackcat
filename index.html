@@ -3050,7 +3050,11 @@ function buildSquadList() {
       return sqVal === assigned || lbl === assigned;
     });
   } else if(S.eventType === '5STAND') {
-    filtered = squads;
+    if(trapSessionFilter){
+      filtered = squads.filter(function(sq){ return (sq.session||"") === trapSessionFilter; });
+    } else {
+      filtered = squads;
+    }
   } else if(!trapAssignedSquad) {
     // Unassigned trapper: filter by session if selected
     if(trapSessionFilter){
