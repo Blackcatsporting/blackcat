@@ -3052,9 +3052,12 @@ function buildSquadList() {
   } else if(S.eventType === '5STAND') {
     filtered = squads;
   } else if(!trapAssignedSquad) {
-    // Unassigned trapper: show ALL squads regardless of session filter
-    // (session filter is for assigned mode; unassigned trapper sees every squad that comes through)
-    filtered = squads;
+    // Unassigned trapper: filter by session if selected
+    if(trapSessionFilter){
+      filtered = squads.filter(function(sq){ return (sq.session||"")=== trapSessionFilter; });
+    } else {
+      filtered = squads;
+    }
   } else if(trapSessionFilter) {
     filtered = squads.filter(function(sq){ return (sq.session||'') === trapSessionFilter; });
   } else if(activeSess) {
