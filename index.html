@@ -3079,7 +3079,7 @@ function buildSquadList() {
     });
 
     if(filtered.length === 0){
-      // All squads done at this station — mark it and check if all stations done
+      // All squads done at this station/session
       updateStationStatus(trapStation+1, null, [], 'complete');
       // Track completed stations in localStorage
       var completedStationsKey = 'ct_completed_stations';
@@ -3088,6 +3088,24 @@ function buildSquadList() {
       completedStations[trapStation] = true;
       try{ localStorage.setItem(completedStationsKey, JSON.stringify(completedStations)); }catch(e){}
       var totalStations = S.stations || 1;
+
+      // For 5 Stand with a session filter active, auto-advance to next session
+      if(S.eventType === '5STAND' && trapSessionFilter) {
+        var allSessions = [];
+        squads.forEach(function(sq){ var s=sq.session||''; if(s && allSessions.indexOf(s)===-1) allSessions.push(s); });
+        allSessions.sort(function(a,b){ return timeToMinutes(a)-timeToMinutes(b); });
+        var curIdx = allSessions.indexOf(trapSessionFilter);
+        var nextSess = curIdx >= 0 && curIdx < allSessions.length-1 ? allSessions[curIdx+1] : null;
+        if(nextSess) {
+          trapSessionFilter = nextSess;
+          scoredSquadKeys = {};
+          var sessSel = document.getElementById('tr-session-filter');
+          if(sessSel) { for(var i=0;i<sessSel.options.length;i++){ if(sessSel.options[i].value===nextSess){ sessSel.selectedIndex=i; break; } } }
+          buildSquadList();
+          return;
+        }
+      }
+
       el.innerHTML = '<div style="text-align:center;padding:30px">'
         + '<div style="font-family:Bebas Neue,sans-serif;font-size:28px;color:var(--hit);letter-spacing:2px;margin-bottom:10px">&#10003; STATION '+(trapStation+1)+' COMPLETE</div>'
         + '<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--dim);margin-bottom:30px">All squads scored — good shooting!</div>'
